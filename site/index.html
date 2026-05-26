@@ -106,11 +106,11 @@
     if (heading && heading.textContent.includes('Duorfan')) {
       if (!heading.querySelector('.name-wrapper')) {
         heading.innerHTML = heading.innerHTML.replace(
-          /Duorfan(?!.*Duorfan)/,
-          '<span class="name-wrapper">Duorfan<span class="hint-icon">ⓘ</span><span class="pronunciation-tooltip">🚪 door + 🪭 fan</span></span>'
+        /Duorfan(?!.*Duorfan)/,
+        '<span class="name-wrapper">Duorfan<span class="hint-icon">ⓘ</span><span class="pronunciation-tooltip">🚪 door + 🪭 fan</span></span>'
         );
       }
-
+      
       const icon = heading.querySelector('.hint-icon');
       const tooltip = heading.querySelector('.pronunciation-tooltip');
       
