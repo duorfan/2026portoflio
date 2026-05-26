@@ -1,0 +1,76 @@
+{
+  "start": "https://www.duorfan.com",
+  "pages": [
+    {
+      "url": "https://www.duorfan.com/",
+      "ok": true,
+      "resources": 41,
+      "saved": 40,
+      "links": 19
+    },
+    {
+      "url": "https://www.duorfan.com/more-projects-gallery",
+      "ok": true,
+      "resources": 35,
+      "saved": 21,
+      "links": 29
+    },
+    {
+      "url": "https://www.duorfan.com/about-me",
+      "ok": true,
+      "resources": 23,
+      "saved": 8,
+      "links": 14
+    },
+    {
+      "url": "https://www.duorfan.com/projects/schego",
+      "ok": true,
+      "resources": 24,
+      "saved": 6,
+      "links": 15
+    },
+    {
+      "url": "https://www.duorfan.com/projects/cyco",
+      "ok": true,
+      "resources": 25,
+      "saved": 7,
+      "links": 15
+    },
+    {
+      "url": "https://www.duorfan.com/projects/ver-coaching",
+      "ok": true,
+      "resources": 19,
+      "saved": 1,
+      "links": 16
+    },
+    {
+      "url": "https://www.duorfan.com/projects/capybara-ai",
+      "ok": true,
+      "resources": 25,
+      "saved": 8,
+      "links": 15
+    },
+    {
+      "url": "https://www.duorfan.com/projects/self-coded-website",
+      "ok": true,
+      "resources": 23,
+      "saved": 5,
+      "links": 15
+    },
+    {
+      "url": "https://www.duorfan.com/mornova",
+      "ok": true,
+      "resources": 18,
+      "saved": 5,
+      "links": 6
+    },
+    {
+      "url": "https://www.duorfan.com/scalesocial",
+      "ok": true,
+      "resources": 19,
+      "saved": 3,
+      "links": 8
+    }
+  ],
+  "failures": []
+}

@@ -1,0 +1,15 @@
+{
+  "name": "duorfan-portfolio-local",
+  "version": "1.0.0",
+  "description": "Local rebuild of www.duorfan.com captured via Chrome DevTools Protocol",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "crawl": "node cdp-crawl.js",
+    "build": "node build-site.js",
+    "rebuild": "node cdp-crawl.js && node build-site.js"
+  },
+  "dependencies": {
+    "chrome-remote-interface": "^0.34.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"const CDP = require\\('chrome-remote-interface'\\); CDP\\({port:9222}\\).then\\(c => c.close\\(\\)\\).then\\(\\(\\) => console.log\\('CDP OK'\\)\\).catch\\(e => { console.error\\('CDP FAIL', e.message\\); process.exit\\(1\\); }\\)\")",
+      "Bash(curl -s -X PUT \"http://localhost:9222/json/new?about:blank\")",
+      "Bash(node cdp-crawl.js)"
+    ]
+  }
+}

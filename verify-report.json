@@ -1,0 +1,82 @@
+[
+  {
+    "path": "/",
+    "title": "Duorfan FAN's Portfolio",
+    "ok": {},
+    "badStatuses": [],
+    "failures": [],
+    "consoleErrors": []
+  },
+  {
+    "path": "/about-me",
+    "title": "About Me",
+    "ok": {},
+    "badStatuses": [],
+    "failures": [],
+    "consoleErrors": []
+  },
+  {
+    "path": "/more-projects-gallery",
+    "title": "More projects (Gallery)",
+    "ok": {},
+    "badStatuses": [],
+    "failures": [],
+    "consoleErrors": []
+  },
+  {
+    "path": "/mornova",
+    "title": "Mornova",
+    "ok": {},
+    "badStatuses": [],
+    "failures": [],
+    "consoleErrors": []
+  },
+  {
+    "path": "/scalesocial",
+    "title": "ScaleSocial",
+    "ok": {},
+    "badStatuses": [],
+    "failures": [],
+    "consoleErrors": []
+  },
+  {
+    "path": "/projects/schego",
+    "title": "ScheGo - Duorfan FAN's Portfolio",
+    "ok": {},
+    "badStatuses": [],
+    "failures": [],
+    "consoleErrors": []
+  },
+  {
+    "path": "/projects/cyco",
+    "title": "CYCO - Duorfan FAN's Portfolio",
+    "ok": {},
+    "badStatuses": [],
+    "failures": [],
+    "consoleErrors": []
+  },
+  {
+    "path": "/projects/ver-coaching",
+    "title": "Ver Coaching - Duorfan FAN's Portfolio",
+    "ok": {},
+    "badStatuses": [],
+    "failures": [],
+    "consoleErrors": []
+  },
+  {
+    "path": "/projects/capybara-ai",
+    "title": "Capybara.AI - Duorfan FAN's Portfolio",
+    "ok": {},
+    "badStatuses": [],
+    "failures": [],
+    "consoleErrors": []
+  },
+  {
+    "path": "/projects/self-coded-website",
+    "title": "Web Roots - Duorfan FAN's Portfolio",
+    "ok": {},
+    "badStatuses": [],
+    "failures": [],
+    "consoleErrors": []
+  }
+]
