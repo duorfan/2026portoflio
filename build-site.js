@@ -182,5 +182,75 @@ function stripResponsiveAttrs(html) {
   });
   console.log(`  ~${totalCssReplacements} URL replacements`);
 
+  console.log('[customize] applying local landing-page tweaks ...');
+  applyLandingPageCustomizations(path.join(SITE, 'index.html'));
+
   console.log('Done. Local site at:', SITE);
 })();
+
+// Hand-authored tweaks to the landing page, kept in the build so they survive `npm run rebuild`.
+//   1. Guard the inline name-wrapper script against double-wrapping. The captured DOM already
+//      includes the wrapper (CDP saw it post-render), so without the guard the script wraps it
+//      again on each load and a second ⓘ appears.
+//   2. Restyle the "Discover Projects" CTA with a brand-dark fill, white arrow, and a hover
+//      lift to the brand-blue accent.
+function applyLandingPageCustomizations(landingPath) {
+  if (!fs.existsSync(landingPath)) return;
+  let html = fs.readFileSync(landingPath, 'utf8');
+
+  const guardBefore = `if (heading && heading.textContent.includes('Duorfan')) {
+      heading.innerHTML = heading.innerHTML.replace(`;
+  const guardAfter = `if (heading && heading.textContent.includes('Duorfan')) {
+      if (!heading.querySelector('.name-wrapper')) {
+        heading.innerHTML = heading.innerHTML.replace(`;
+  if (html.includes(guardBefore) && !html.includes(guardAfter)) {
+    html = html.replace(guardBefore, guardAfter);
+    // Close the new `if` block. The original `.replace(...);` call ends with `);` on the line
+    // after the wrapper string — wrap it with a matching `}`.
+    html = html.replace(
+      `'<span class="name-wrapper">Duorfan<span class="hint-icon">ⓘ</span><span class="pronunciation-tooltip">🚪 door + 🪭 fan</span></span>'\n      );`,
+      `'<span class="name-wrapper">Duorfan<span class="hint-icon">ⓘ</span><span class="pronunciation-tooltip">🚪 door + 🪭 fan</span></span>'\n        );\n      }`
+    );
+  }
+
+  const buttonCss = `
+  /* Discover Projects CTA — brand-aligned fill with hover */
+  .link-block-8 {
+    background-color: var(--dark-brown) !important;
+    border-color: var(--dark-brown) !important;
+    box-shadow: 0 4px 14px rgba(73, 67, 62, 0.18);
+    transition: background-color .2s ease, transform .15s ease, box-shadow .2s ease;
+  }
+  .link-block-8 .buttontext {
+    color: var(--beige) !important;
+  }
+  .link-block-8 .image-20 {
+    filter: brightness(0) invert(1);
+  }
+  .link-block-8:hover {
+    background-color: var(--brandcolor) !important;
+    border-color: var(--brandcolor) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(73, 67, 62, 0.22);
+  }
+  .link-block-8:hover .buttontext {
+    color: var(--dark-brown) !important;
+  }
+  .link-block-8:hover .image-20 {
+    filter: none;
+  }
+`;
+  // Inject before the first </style> that follows the pronunciation-tooltip rules.
+  const styleAnchor = `@media (max-width: 768px) {
+    .pronunciation-tooltip {
+      bottom: calc(100% + 8px);
+      font-size: 16px;
+    }
+  }
+</style>`;
+  if (html.includes(styleAnchor) && !html.includes('Discover Projects CTA')) {
+    html = html.replace(styleAnchor, styleAnchor.replace('</style>', buttonCss + '</style>'));
+  }
+
+  fs.writeFileSync(landingPath, html, 'utf8');
+}
