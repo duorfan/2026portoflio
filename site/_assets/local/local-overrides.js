@@ -127,9 +127,20 @@
     if (id) document.documentElement.setAttribute('data-filter', id);
     else document.documentElement.removeAttribute('data-filter');
 
-    // Update pressed state on chips
+    // Update pressed state on chips + (mobile) scroll the active chip into view inside
+    // the horizontally-scrolling filter bar so users don't lose it off-screen.
+    let activeChip = null;
     for (const btn of document.querySelectorAll('.filter-chip')) {
-      btn.setAttribute('aria-pressed', String(btn.dataset.filter === id));
+      const isActive = btn.dataset.filter === id;
+      btn.setAttribute('aria-pressed', String(isActive));
+      if (isActive) activeChip = btn;
+    }
+    if (activeChip && activeChip.scrollIntoView) {
+      // Only useful when the bar actually scrolls horizontally (mobile).
+      const bar = activeChip.closest('.filter-bar');
+      if (bar && bar.scrollWidth > bar.clientWidth) {
+        activeChip.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+      }
     }
     // Hide sections whose visible cards are all filtered out
     for (const section of document.querySelectorAll('[data-filterable-section]')) {

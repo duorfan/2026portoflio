@@ -122,10 +122,32 @@
   display: inline-block; margin-left: 6px;
   font-size: 11px; opacity: 0.6; font-variant-numeric: tabular-nums;
 }
+/* Mobile: convert from wrapping multi-line to a horizontal scroller — keeps the bar
+   one row tall, fits any number of chips, and uses a familiar mobile pattern. A soft
+   right-edge fade hints that there's more to scroll. */
 @media (max-width: 768px) {
-  .filter-bar { padding: 10px 16px; }
-  .filter-chip { font-size: 12px; padding: 6px 11px; }
+  .filter-bar {
+    padding: 10px 16px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    /* Right-edge fade — show users there's more chips off-screen. */
+    mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
   .filter-bar .filter-label { display: none; }
+  .filter-chip {
+    font-size: 12px; padding: 6px 11px;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+  /* Don't lift on hover (no hover on touch); kills the layout shift. */
+  .filter-chip:hover { transform: none; }
 }
 
 /* Filter behavior — hide cards that lack the active tag. */
