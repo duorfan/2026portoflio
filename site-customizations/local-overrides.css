@@ -82,16 +82,79 @@
   50%      { opacity: 0.4; }
 }
 
+/* Belt-and-suspenders: never let any element create horizontal overflow.
+   Webflow's `.w-container` has min-width baked in that overflows narrow viewports;
+   clamping body's overflow-x and the navbar's max-width both stops the runaway. */
+html, body { overflow-x: hidden; }
+.navbar-2,
+.nav-container.w-container,
+.w-nav-overlay {
+  max-width: 100vw;
+}
+
+/* ---------- 3b. Navbar visibility while filter is pinned ---------------
+   The Webflow navbar ships transparent (background: #0000), which makes
+   content (cards, filter chips) bleed through. On desktop Webflow IX2
+   already slides it -70px on scroll; mobile doesn't get that behavior.
+   To get consistent UX across viewports: when the user is in the project
+   area (filter bar pinned to the top), fade the navbar out completely so
+   the filter bar owns the top strip cleanly. As soon as the user scrolls
+   back up past the filter bar, the navbar reappears for global nav. */
+.navbar-2 {
+  transition: opacity .22s ease, background-color .25s ease, box-shadow .25s ease;
+}
+body.filter-pinned .navbar-2 {
+  opacity: 0;
+  pointer-events: none;
+}
+/* When the user is past the hero but the filter isn't yet pinned (brief
+   window), give the navbar a solid fill so cards don't bleed through.
+   Fully opaque — translucent + blur still let bold headings ghost through. */
+body.nav-solid:not(.filter-pinned) .navbar-2 {
+  background-color: var(--beige) !important;
+  box-shadow: 0 1px 0 rgba(153, 136, 122, 0.18);
+}
+/* On mobile the navbar stays visible even when filter "pin" event fires
+   (we cancel the fade for mobile elsewhere), so it also needs the solid fill. */
+@media (max-width: 768px) {
+  body.nav-solid .navbar-2 {
+    background-color: var(--beige) !important;
+    box-shadow: 0 1px 0 rgba(153, 136, 122, 0.18);
+  }
+}
+
 /* ---------- 4. Filter bar (sticky on scroll) ------------------------- */
 .filter-bar {
   position: sticky; top: 0; z-index: 50;
-  background: var(--beige);
+  background: rgba(250, 244, 238, 0.94);
   border-bottom: 1px solid rgba(153, 136, 122, 0.18);
   padding: 12px 32px;
   display: flex; gap: 8px; flex-wrap: wrap;
   justify-content: center; align-items: center;
-  backdrop-filter: saturate(140%) blur(6px);
-  -webkit-backdrop-filter: saturate(140%) blur(6px);
+  backdrop-filter: saturate(140%) blur(8px);
+  -webkit-backdrop-filter: saturate(140%) blur(8px);
+  transition: box-shadow .2s ease, transform .25s ease;
+}
+/* Inline variant — used on the More projects gallery. Sits in document flow
+   (no sticky), no backdrop blur, left-aligned to match section heading. */
+.filter-bar.filter-bar--inline {
+  position: static;
+  background: transparent;
+  border-bottom: none;
+  padding: 0 0 24px;
+  justify-content: flex-start;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.filter-bar.filter-bar--inline .filter-label {
+  margin-right: 12px;
+}
+/* Subtle shadow when pinned, gives it visual lift from the content below.
+   `body.filter-pinned` is toggled by local-overrides.js. */
+body.filter-pinned .filter-bar {
+  box-shadow: 0 4px 12px rgba(73, 67, 62, 0.08);
 }
 .filter-bar .filter-label {
   font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em;
@@ -126,19 +189,12 @@
    one row tall, fits any number of chips, and uses a familiar mobile pattern. A soft
    right-edge fade hints that there's more to scroll. */
 @media (max-width: 768px) {
-  .filter-bar {
-    padding: 10px 16px;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    /* Right-edge fade — show users there's more chips off-screen. */
-    mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
-    -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
-  }
+  /* The static filter bar is replaced on mobile by a floating action button + bottom
+     sheet (see .filter-fab / .filter-sheet rules below). Hiding the bar avoids any
+     scroll conflict with the fixed navbar and gives the chips a thumb-reachable home. */
+  .filter-bar { display: none !important; }
+  /* No pin-swap to do on mobile (no sticky bar), so keep navbar visible always. */
+  body.filter-pinned .navbar-2 { opacity: 1 !important; pointer-events: auto !important; }
   .filter-bar::-webkit-scrollbar { display: none; }
   .filter-bar .filter-label { display: none; }
   .filter-chip {
@@ -148,6 +204,23 @@
   }
   /* Don't lift on hover (no hover on touch); kills the layout shift. */
   .filter-chip:hover { transform: none; }
+
+  /* Hero intro text — Webflow leaves it translated ~22vw right (positions it next to
+     the cube on desktop), which pushes the copy off-screen on a narrow mobile viewport.
+     Reset the transform so the headline + button sit cleanly in the column. */
+  .hero-section .intro-container {
+    transform: none !important;
+    text-align: left;
+    padding: 0 20px;
+  }
+  /* Center the video grid on mobile. Webflow's inline transform shifts it
+     `translate3d(-20vw, 0, 0)` (positions it next to the desktop intro column on the
+     right); on mobile that just clips ~80px off the left and leaves a fat white margin
+     on the right. The actual scroll animation lives on `.grid-3` (it scales) — we leave
+     that untouched, so the cube still grows/shrinks on scroll. */
+  .hero-section .video-grid {
+    transform: translate3d(0, 0, 0) !important;
+  }
 }
 
 /* Filter behavior — hide cards that lack the active tag. */
@@ -166,7 +239,14 @@ html[data-filter="ux-research"]   .collection-item-2:not([data-tags~="ux-researc
 html[data-filter="front-end"]     .collection-item:not([data-tags~="front-end"]),
 html[data-filter="front-end"]     .collection-item-2:not([data-tags~="front-end"]),
 html[data-filter="creative-tech"] .collection-item:not([data-tags~="creative-tech"]),
-html[data-filter="creative-tech"] .collection-item-2:not([data-tags~="creative-tech"]) {
+html[data-filter="creative-tech"] .collection-item-2:not([data-tags~="creative-tech"]),
+/* More-gallery taxonomy (page-specific) */
+html[data-filter="games"]    .collection-item-2:not([data-tags~="games"]),
+html[data-filter="av"]       .collection-item-2:not([data-tags~="av"]),
+html[data-filter="physical"] .collection-item-2:not([data-tags~="physical"]),
+html[data-filter="graphic"]  .collection-item-2:not([data-tags~="graphic"]),
+html[data-filter="ai"]       .collection-item-2:not([data-tags~="ai"]),
+html[data-filter="ui"]       .collection-item-2:not([data-tags~="ui"]) {
   display: none;
 }
 /* Hide a section entirely when none of its cards match the active filter. */
@@ -241,6 +321,13 @@ body.is-empty-filter .filter-empty-state { display: block; }
   flex: 0 1 calc(33.333% - 16px);
   min-width: 220px;
   max-width: 320px;
+  border-radius: 14px;
+  transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease;
+}
+/* Match AI Builds hover: 4px lift + soft warm shadow. */
+.other-projects > .w-dyn-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 32px rgba(73, 67, 62, 0.14);
 }
 
 /* ---------- 5. Card chips (replaces the old .tag line) --------------- */
@@ -320,47 +407,117 @@ body.is-empty-filter .filter-empty-state { display: block; }
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
 }
-#ai-builds .collection-item .div-block-10 {
+/* ---------- 5d. Unified project card wrapper ---------------------------
+   One card shape for every project across AI Builds + Selected Design Work:
+     [ thumbnail (cropped to a consistent aspect ratio) ]
+     [ project title       ]
+     [ chip row (tags)     ]
+     [ description         ]
+   Each piece sits in a padded card body with a soft border and lift-on-hover.
+   The cards' OUTER container (.collection-item) handles the click target;
+   .div-block-10 is the visible card shell. */
+#ai-builds .collection-item .div-block-10,
+#selected-project .collection-item .div-block-10 {
   display: flex;
   flex-direction: column;
-  min-height: 360px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(73, 67, 62, 0.10) !important;
+  border-radius: 18px;
+  overflow: hidden;
+  padding: 0;
+  min-height: 0;
+  /* `transform: none !important` blocks Webflow IX2's inline scale3d(1.05) in
+     the base state. Without this, IX2 still animates the inline scale back to 1
+     on mouseleave (visible as a "shrink" animation), even though the :hover state
+     overrode it. Together with the :hover rule below, both states are fully owned
+     by our CSS — smooth in, smooth out, no IX2 echo. */
+  transform: none !important;
+  /* !important must be at the END of the shorthand, not mid-value, or the
+     whole declaration is invalid. */
+  transition: transform .25s cubic-bezier(.2,.8,.2,1),
+              box-shadow .25s ease,
+              border-color .25s ease !important;
 }
-#ai-builds .collection-item .cover-img.profile-img {
-  width: 100%;
-  height: 240px;
-  object-fit: cover;
-  border-radius: 12px;
-  margin-bottom: 16px;
-}
-#ai-builds .collection-item .secondary-heading.project-title {
-  margin: 0 0 4px;
-  font-size: 28px;
-  color: var(--dark-brown);
-}
-#ai-builds .collection-item .transparent-subtitle {
-  color: var(--light-brown);
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 8px 0 0;
+#ai-builds .collection-item:hover .div-block-10,
+#selected-project .collection-item:hover .div-block-10 {
+  /* !important here is critical: Webflow IX2 sets an inline
+     `transform: scale3d(1.05, 1.05, 1)` on the design cards' .div-block-10
+     when hovered (a legacy interaction from the original Webflow file). Without
+     !important the inline scale wins and the design cards visibly "grow" while
+     AI Builds cards (with no IX2 hover) just lift — they look inconsistent. */
+  transform: translateY(-4px) !important;
+  box-shadow: 0 14px 32px rgba(73, 67, 62, 0.13);
+  border-color: rgba(73, 67, 62, 0.18) !important;
 }
 
-/* ---------- 6. Section headers (AI Builds / Design Work / Films) ----- */
+/* Thumbnail — fixed 16:10 aspect, edge-to-edge top of the card.
+   CRITICAL: override Webflow's narrow-mobile `.profile-img { min-width: 100% }`
+   which would otherwise force the image (and through it, the grid item) to grow
+   wider than the grid column, blowing the layout out past the viewport. */
+#ai-builds .collection-item .cover-img.profile-img,
+#selected-project .collection-item .cover-img.profile-img,
+.other-projects .cover-img.profile-img,
+.other-projects .image-7 {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  display: block;
+  margin: 0;
+  border-radius: 0;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+/* Grid items default to `min-width: auto`, which lets their content widen them
+   past their grid-column share. Setting `min-width: 0` makes each card respect
+   its `1fr` column allocation. */
+#ai-builds .collection-item,
+#selected-project .collection-item {
+  min-width: 0;
+}
+
+/* Card body — pad the title / chips / description as a group. */
+#ai-builds .collection-item .secondary-heading.project-title,
+#selected-project .collection-item .secondary-heading.project-title {
+  margin: 18px 20px 6px;
+  font-size: 24px;
+  color: var(--dark-brown);
+  text-align: left;
+}
+#ai-builds .collection-item .chip-row,
+#selected-project .collection-item .design-chip-row {
+  margin: 0 20px 8px;
+}
+#ai-builds .collection-item .stack-row {
+  margin: 0 20px 10px;
+}
+#ai-builds .collection-item .transparent-subtitle,
+#selected-project .collection-item .transparent-subtitle {
+  margin: 0 20px 14px;
+  color: var(--light-brown);
+  font-size: 14px;
+  line-height: 1.55;
+}
+#ai-builds .collection-item .outcome-line {
+  margin: 0 20px 18px;
+}
+
+/* ---------- 6. Section headers (AI Builds / Design Work / Films) -----
+   Subtitle is a small italic-ish label that sits just under the section h1.
+   The h1 keeps Webflow's original left-alignment (it's a heading, not a
+   centered banner) — left-aligned reads more like a real section header. */
 .section-subtitle {
   font-family: Montserrat, sans-serif;
   font-size: 15px;
   color: var(--light-brown);
-  text-align: center;
   margin: -10px 0 22px;
   letter-spacing: 0.01em;
 }
-.section-ai-films .secondary-heading,
-.section-ai-films .section-subtitle { /* quieter */ }
 .section-ai-films .secondary-heading { font-size: 32px; }
 
 /* ---------- 6b. Unified section rhythm + backgrounds --------------------
-   Goal: visually differentiate AI Builds / Selected Design Work / AI Films
-   while keeping vertical spacing identical at every breakpoint. Uses clamp()
-   so spacing scales smoothly between mobile (56px) and desktop (96px). */
+   Symmetric desktop/tablet padding (original Webflow-ish proportions).
+   Mobile gets asymmetric tweaks in the @media block at the bottom of this file. */
 :root {
   --section-pad-y: clamp(56px, 8vw, 96px);
   --section-pad-x: clamp(20px, 5vw, 48px);
@@ -373,16 +530,13 @@ article#ai-builds,
 article#selected-project,
 article#ai-films,
 .section-about-snapshot {
-  padding-top: var(--section-pad-y);
-  padding-bottom: var(--section-pad-y);
-  padding-left: var(--section-pad-x);
-  padding-right: var(--section-pad-x);
+  padding: var(--section-pad-y) var(--section-pad-x);
   margin: 0;
 }
 article#ai-builds        { background-color: var(--bg-ai-builds); }
 article#selected-project { background-color: var(--bg-design); }
 article#ai-films         { background-color: var(--bg-ai-films); }
-.section-about-snapshot  { background-color: var(--bg-about); padding-top: var(--section-pad-y); padding-bottom: var(--section-pad-y); }
+.section-about-snapshot  { background-color: var(--bg-about); }
 
 /* AI Films text needs to flip to cream against the dark background. */
 article#ai-films .secondary-heading,
@@ -407,7 +561,9 @@ article#ai-films .ai-films-grid,
 /* ---------- 7. AI Films cards (looping video previews) --------------- */
 .ai-films-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  /* `min(280px, 100%)` lets cards shrink below 280 when viewport is narrower,
+     so they never overflow on 360px screens. */
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 24px;
   max-width: 940px;
   margin: 0 auto;
@@ -423,7 +579,15 @@ article#ai-films .ai-films-grid,
   color: var(--beige);
   transition: transform .25s ease, box-shadow .25s ease;
 }
-.ai-film-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.18); }
+/* Match the AI Builds hover (lift + glow) — same timing curve and magnitude,
+   shadow tinted darker for the cinematic black background. */
+.ai-film-card {
+  transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease;
+}
+.ai-film-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
+}
 .ai-film-card video {
   width: 100%; height: 100%; object-fit: cover; display: block;
 }
@@ -590,3 +754,337 @@ body.gated-hidden > *:not(.gate-modal) { visibility: hidden; }
    We absorb their content into AI Builds; suppress originals so the
    patch is reversible if we ever revert. */
 .legacy-builder-block { display: none; }
+
+/* ---------- 12a. Footer Claude Code attribution -------------------------
+   Small inline mark + link to https://claude.com/code that sits in every
+   footer's closing line. Subtle Claude-coral so the icon is recognizable
+   without competing with the warm "Made with 🤍" sentiment. */
+.text-block-3 .claude-code-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #C66A3D;
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 1px dashed rgba(198, 106, 61, 0.45);
+  padding-bottom: 1px;
+  transition: color .15s ease, border-color .15s ease;
+}
+.text-block-3 .claude-code-link:hover {
+  color: #A04E27;
+  border-bottom-color: rgba(160, 78, 39, 0.8);
+}
+.text-block-3 .claude-code-icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+  /* Subtle "twinkle" so the icon feels alive without being distracting. */
+  animation: claudeTwinkle 4s ease-in-out infinite;
+}
+@keyframes claudeTwinkle {
+  0%, 100% { opacity: 1; transform: rotate(0); }
+  50% { opacity: 0.75; transform: rotate(45deg); }
+}
+
+/* ---------- 12b. More projects gallery — unified card wrapper ----------
+   Brings the More page cards (.collection-item-2 / .link-block-6 / .gallery-img)
+   into the same vocabulary as the landing-page cards:
+   - rounded soft card with subtle border + hover lift (matches AI Builds)
+   - thumbnails forced to 16:10 aspect so the grid looks even
+   - long tool/tech tag turned into a quiet stack-row of small chips
+   - kills Webflow's `.scroll-right` marquee inside the card (not appropriate
+     in the grid context — it was for a different layout). */
+.section-selected.black-bg .gallery {
+  /* Page-level Gallery container — drop the dark-bg vibe inherited from
+     the original Webflow class; we use the lighter section bg now. */
+  background: transparent;
+}
+.section-selected.black-bg {
+  background-color: var(--beige) !important;
+}
+
+/* Card shell */
+.collection-item-2 {
+  margin-bottom: 0;
+  min-width: 0;
+}
+.collection-item-2 .link-block-6 {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(73, 67, 62, 0.10) !important;
+  border-radius: 18px !important;
+  overflow: hidden;
+  text-decoration: none;
+  min-width: 0;
+  /* Block any IX2 inline transform in base state + match landing hover timing. */
+  transform: none !important;
+  transition: transform .25s cubic-bezier(.2,.8,.2,1),
+              box-shadow .25s ease,
+              border-color .25s ease !important;
+}
+.collection-item-2:hover .link-block-6 {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 14px 32px rgba(73, 67, 62, 0.13);
+  border-color: rgba(73, 67, 62, 0.18) !important;
+}
+
+/* Thumbnail — uniform 16:10, edge-to-edge top of card. */
+.collection-item-2 .gallery-img {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  display: block !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Title — padded body, left-aligned. */
+.collection-item-2 .secondary-heading.project-title {
+  margin: 18px 20px 6px !important;
+  font-size: 22px !important;
+  color: var(--dark-brown);
+  text-align: left;
+  /* Block Webflow IX2 inline transform/opacity (scroll-trigger initial state). */
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Tag — kill the marquee and render the tool/tech list as a row of small
+   stack-chips (mirrors the AI Builds stack-row vocabulary on the landing page).
+   The actual chip spans are injected by build-site.js via splitMoreTagToChips(). */
+.collection-item-2 .tag.scroll-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 20px 18px !important;
+  padding: 0 !important;
+  background: none !important;
+  border: none !important;
+  /* Defeat Webflow's IX2 inline opacity/transform and any scroll-right animation. */
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+/* The first chunk (before the colon, if any) reads as a category — primary chip. */
+.collection-item-2 .tag.scroll-right .more-chip-primary {
+  font-family: Montserrat, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--dark-brown);
+  background: #E8DDC8;
+  padding: 4px 10px;
+  border-radius: 999px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.collection-item-2 .tag.scroll-right .more-chip {
+  font-family: Montserrat, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--light-brown);
+  background: rgba(73, 67, 62, 0.06);
+  padding: 3px 8px;
+  border-radius: 999px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* Page grid — switch from raw Webflow grid to a centered flex layout that
+   handles 21 cards across responsive breakpoints (3 cols desktop, 2 tablet,
+   1 mobile) without overflow or dangling orphans. */
+.dyn-flex {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)) !important;
+  grid-column-gap: 24px !important;
+  grid-row-gap: 32px !important;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Gallery page header — keep Webflow heading, tighten the intro. */
+.gallery > .secondary-heading,
+.gallery > .summary-info {
+  text-align: left;
+}
+.gallery > .summary-info {
+  max-width: 640px;
+  margin-bottom: 40px;
+}
+
+@media (max-width: 768px) {
+  .collection-item-2 .secondary-heading.project-title { font-size: 20px !important; }
+  .collection-item-2 .tag.scroll-right { font-size: 11px !important; }
+}
+
+/* ---------- 13. Mobile filter FAB + bottom sheet -----------------------
+   On screens ≤768px the static filter bar is hidden (see section 4) and
+   replaced by a thumb-reachable floating button at bottom-right. Tapping
+   it slides up a bottom sheet with the same chips. Mirrors the iOS /
+   Material pattern (Apple Books, Maps filter, Google Photos). */
+.filter-fab,
+.filter-sheet,
+.filter-sheet-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .filter-fab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    position: fixed;
+    right: 16px;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    z-index: 60;
+    padding: 12px 18px;
+    border: none;
+    border-radius: 999px;
+    background: var(--dark-brown);
+    color: var(--beige);
+    font-family: Montserrat, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    box-shadow: 0 6px 18px rgba(73, 67, 62, 0.22);
+    cursor: pointer;
+    /* Default = subtle: smaller + dimmer so it doesn't compete with the
+       hero "Discover Projects" CTA. Brightens when user scrolls into the
+       project area (body.nav-solid is set past 80px). */
+    opacity: 0.72;
+    transform: scale(0.92);
+    transform-origin: bottom right;
+    transition: opacity .35s ease, transform .35s cubic-bezier(.2, .8, .2, 1),
+                box-shadow .25s ease;
+  }
+  body.nav-solid .filter-fab {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 8px 24px rgba(73, 67, 62, 0.28);
+  }
+  .filter-fab:hover,
+  .filter-fab:focus-visible {
+    opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 10px 28px rgba(73, 67, 62, 0.34);
+    outline: none;
+  }
+  body.nav-solid .filter-fab:hover,
+  body.nav-solid .filter-fab:focus-visible {
+    transform: scale(1.05);
+  }
+  .filter-fab:active { transform: scale(0.96) !important; }
+
+  .filter-fab-icon { display: inline-flex; align-items: center; }
+  .filter-fab-current {
+    margin-left: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(250, 244, 238, 0.16);
+    font-size: 12px; font-weight: 500;
+  }
+  .filter-fab.has-active {
+    /* When a filter is active, keep the ring affordance regardless of hero state. */
+    opacity: 1 !important;
+    transform: scale(1);
+    box-shadow: 0 8px 24px rgba(73, 67, 62, 0.32), 0 0 0 2px var(--brandcolor);
+  }
+
+  .filter-sheet-backdrop {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(73, 67, 62, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .22s ease;
+    z-index: 95;
+  }
+  body.sheet-open .filter-sheet-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .filter-sheet {
+    display: block;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 100;
+    background: var(--beige);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    padding: 8px 20px max(20px, env(safe-area-inset-bottom));
+    max-height: 70vh;
+    overflow-y: auto;
+    transform: translateY(105%);
+    transition: transform .28s cubic-bezier(.2, .8, .2, 1);
+    box-shadow: 0 -8px 32px rgba(73, 67, 62, 0.18);
+  }
+  body.sheet-open .filter-sheet {
+    transform: translateY(0);
+  }
+  .filter-sheet-handle {
+    width: 36px; height: 4px;
+    background: rgba(73, 67, 62, 0.25);
+    border-radius: 2px;
+    margin: 0 auto 12px;
+  }
+  .filter-sheet-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .filter-sheet-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px; font-weight: 600;
+    color: var(--dark-brown);
+    margin: 0;
+  }
+  .filter-sheet-close {
+    appearance: none; background: none; border: none;
+    width: 32px; height: 32px;
+    font-size: 24px; line-height: 1;
+    color: var(--light-brown);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .filter-sheet-chips {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    padding-bottom: 8px;
+  }
+  .filter-sheet-chips .filter-chip.sheet-chip {
+    /* Touch-friendly: ≥44px tap target */
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+}
+
+/* ---------- 14. Mobile-only spacing polish ----------------------------
+   Mobile-specific tweaks to the section rhythm and card layout. These do
+   NOT apply to tablet/desktop — that layout stays on the desktop-tuned
+   `--section-pad-y` and the original Webflow proportions. */
+@media (max-width: 768px) {
+  /* More breathing room above each section title; tighter bottom so
+     adjacent sections feel connected. */
+  article#ai-builds,
+  article#selected-project,
+  article#ai-films,
+  .section-about-snapshot {
+    padding-top: 72px;
+    padding-bottom: 48px;
+  }
+  /* On mobile, give a small gap between title and subtitle (the negative
+     margin from desktop overlaps them awkwardly on narrow viewports). */
+  .section-subtitle {
+    margin-top: 6px;
+    margin-bottom: 28px;
+  }
+  /* Cards stack as a single column on narrow screens; ensure side gutters. */
+  #ai-builds .collection-list-4,
+  #selected-project .collection-list-4 {
+    padding: 0 4px;
+  }
+}

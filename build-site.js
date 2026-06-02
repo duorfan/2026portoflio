@@ -174,12 +174,38 @@ function injectLocalAssets(html, rel) {
   return html;
 }
 
-// Footer patches — remove any previously-injected availability ask and bump the year.
+// Footer patches — strip ask, bump year, warm up the closing line.
+// Captured Webflow text is:  "@ 2026 DuorfanFAN | Made with Love 🤍"
+// Replaced with a warmer line + a Claude Code attribution mark (links to
+// https://claude.com/code). Idempotent: the marker class guards re-application.
+const FOOTER_NEW_LINE =
+  'Hand-crafted with 🤍 by Duorfan, ' +
+  'co-built with <a href="https://claude.com/code" target="_blank" rel="noopener" class="claude-code-link">' +
+    '<svg class="claude-code-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">' +
+      '<path d="M12 2 L13.6 9.3 L20.8 11 L13.6 12.7 L12 20 L10.4 12.7 L3.2 11 L10.4 9.3 Z"/>' +
+      '<path d="M19 3 L19.55 5.45 L22 6 L19.55 6.55 L19 9 L18.45 6.55 L16 6 L18.45 5.45 Z" opacity="0.8"/>' +
+    '</svg>' +
+    'Claude Code</a> · ' +
+  '© 2026';
+
 function applyFooterAsk(html) {
   // 1) Strip the availability ask if a previous build injected it.
   html = html.replace(/<div class="footer-ask">[\s\S]*?<\/div>/g, '');
-  // 2) Bump copyright year 2025 → 2026 (covers both the en-dash and plain-dash variants).
+  // 2) Bump copyright year (still useful if a fresh capture lands here).
   html = html.replace(/@ 2025 DuorfanFAN/g, '@ 2026 DuorfanFAN');
+  // 3) Replace the closing line with the warmer Claude Code attribution.
+  //    Matches both the captured plain text and any prior rewritten variant
+  //    (so re-runs don't double the line).
+  html = html.replace(/@ 20\d\d DuorfanFAN \| Made with Love 🤍/g, FOOTER_NEW_LINE);
+  // 4) Refresh social links (email + instagram). Note the &amp; in attribute values.
+  html = html.replace(
+    /to=nf2111@nyu\.edu/g,
+    'to=duorfan@gmail.com'
+  );
+  html = html.replace(
+    /https:\/\/www\.instagram\.com\/duorfantasy\/\?next=%2F/g,
+    'https://www.instagram.com/duor.fun'
+  );
   return html;
 }
 
@@ -446,41 +472,79 @@ function applyMornovaPatches(html) {
 }
 
 // ----- More gallery — tag the 21 cards + mark its section filterable ---
+// Per-title tag map for the More-page filter taxonomy (games / av / physical /
+// graphic / ai / ui). Cards can carry multiple tags. Keys are the exact card
+// titles as they appear in <h1 class="secondary-heading project-title">.
+const MORE_PAGE_TAGS = {
+  'Depersonalization':         ['av'],
+  'Appear':                    ['physical'],
+  'Upload':                    ['av', 'games'],
+  'Welcome to Hogwarts':       ['games', 'ai'],
+  'Printed Fate':              ['physical', 'ai'],
+  'NYU Free T-shirt':          ['ui'],
+  'Alter Ego':                 ['games'],
+  'Flappy Heart':              ['games', 'physical'],
+  'Cinderella has BIG feet?':  ['graphic'],
+  'Unreal Engine Micro Movie': ['av'],
+  'Balance Station':           ['physical'],
+  'Space We Call Home':        ['av', 'ai'],
+  'Garbage Ninja':             ['games', 'physical'],
+  'Information Design':        ['ui'],
+  'Typography':                ['graphic'],
+  'Yearbook Design':           ['graphic'],
+  'Stage Costume':             ['physical'],
+  'Yaoud Medicine':            ['ui'],
+  'Jewelery Organizer':        ['physical'],
+  'Happy Christmas':           ['physical'],
+  '3050':                      ['av', 'physical'],
+};
+
+// Split a More-page tag line like
+//   "Audiovisual Live Performance: TouchDesigner + MUSE 2 + JavaScript (p5.js)"
+// into chip spans. First chunk (before the colon) becomes a primary chip; the
+// rest split on + | , become secondary stack-chips.
+function splitMoreTagToChips(text) {
+  // HTML-decode common entities Webflow uses.
+  const decoded = text
+    .replace(/&amp;/g, '&')
+    .replace(/&nbsp;/g, ' ')
+    .trim();
+  let primary = null;
+  let rest = decoded;
+  // If there's a colon early on, treat what's before as a category label.
+  const colonIdx = decoded.indexOf(':');
+  if (colonIdx > 0 && colonIdx < 40) {
+    primary = decoded.slice(0, colonIdx).trim();
+    rest = decoded.slice(colonIdx + 1).trim();
+  }
+  const tools = rest.split(/\s*[+|,]\s*/).map((s) => s.trim()).filter(Boolean);
+  const escape = (s) => s.replace(/[<>&"]/g, (c) => ({ '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;' }[c]));
+  const chips = [];
+  if (primary) chips.push(`<span class="more-chip-primary">${escape(primary)}</span>`);
+  for (const t of tools) chips.push(`<span class="more-chip">${escape(t)}</span>`);
+  return chips.join('');
+}
+
 function applyMorePagePatches(html) {
-  // Tag the dark cards section so the filter's section-empty machinery can hide its heading
-  // when no cards match.
+  // Tag the cards section so the filter's section-empty machinery can hide its heading.
   html = html.replace(
     /<section\s+class="section-selected black-bg"(?![^>]*data-filterable-section)/,
     '<section class="section-selected black-bg" data-filterable-section'
   );
-  // Each .collection-item-2 has a tag scroll-right paragraph with a known string.
-  // We match the surrounding card by the unique combination of project title + tag text.
-  // Strategy: walk all cards, infer tag IDs from the tag text, write data-tags onto the card.
-  const tagInferences = [
-    { match: /touchdesigner|muse 2|p5\.js/i,                tags: 'creative-tech' },
-    { match: /motion capture|unreal engine|meta quest|blender/i, tags: 'creative-tech' },
-    { match: /machine learning|hand pose model|openai api/i, tags: 'creative-tech ai-build' },
-    { match: /runway|midjourney/i,                          tags: 'ai-film creative-tech' },
-    { match: /ui design|uiux|figma$/i,                      tags: 'product-design' },
-    { match: /web design|front end/i,                       tags: 'front-end product-design' },
-    { match: /unity|arduino|processing|garbage classification/i, tags: 'creative-tech' },
-    { match: /data visualization|scrollytelling|information design/i, tags: 'creative-tech' },
-    { match: /procreate|comics|adobe indesign|photoshop|illustrator|magazine|booklet|yearbook|costume|sewing|laser cutter|acrylic|jewelry organizer/i, tags: 'creative-tech' },
-    { match: /ableton|resolume|video edit|real-time performance/i, tags: 'creative-tech' },
-    { match: /trouble shooting/i,                            tags: 'product-design' },
-    { match: /clay|product\/interface design/i,              tags: 'creative-tech' },
-  ];
-  // Regex to find each card. The card div opens with class="collection-item-2 w-dyn-item"
-  // and the tag paragraph appears later inside.
+
+  // Walk each card and (a) write data-tags from the title map, (b) replace the
+  // long plain-text tag with chip markup.
   return html.replace(
-    /(<div\s+[^>]*class="collection-item-2 w-dyn-item"[^>]*)(>[\s\S]*?<p\s+[^>]*class="tag scroll-right"[^>]*>)([^<]+)(<\/p>)/g,
-    (full, openDiv, mid, tagText, end) => {
-      if (openDiv.includes('data-tags=')) return full; // already tagged
-      let tags = 'creative-tech';
-      for (const rule of tagInferences) {
-        if (rule.match.test(tagText)) { tags = rule.tags; break; }
-      }
-      return `${openDiv} data-tags="${tags}"${mid}${tagText}${end}`;
+    /(<div\s+[^>]*class="collection-item-2 w-dyn-item"[^>]*)(>[\s\S]*?<h1[^>]*class="secondary-heading project-title"[^>]*>)([^<]+)(<\/h1>[\s\S]*?<p\s+[^>]*class="tag scroll-right"[^>]*>)([^<]+)(<\/p>)/g,
+    (full, openDiv, midPre, title, midPost, tagText, end) => {
+      // Use the explicit title map; default to 'physical' if title is somehow missing.
+      const cleanTitle = title.replace(/&amp;/g, '&').trim();
+      const tags = (MORE_PAGE_TAGS[cleanTitle] || ['physical']).join(' ');
+      const newOpen = openDiv.includes('data-tags=')
+        ? openDiv
+        : `${openDiv} data-tags="${tags}"`;
+      const chipsHtml = splitMoreTagToChips(tagText);
+      return `${newOpen}${midPre}${title}${midPost}${chipsHtml}${end}`;
     }
   );
 }

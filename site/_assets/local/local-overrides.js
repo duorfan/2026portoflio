@@ -47,7 +47,8 @@
   // ------------------------------------------------------------------
   // 3) Filter bar — chip toggles + URL hash deep-linking
   // ------------------------------------------------------------------
-  const FILTER_DEFS = [
+  // Landing-page filters — professional work taxonomy.
+  const FILTER_DEFS_LANDING = [
     { id: '',               label: 'All' },
     { id: 'ai-build',       label: 'AI Build' },
     { id: 'ai-film',        label: 'AI Film' },
@@ -57,18 +58,31 @@
     { id: 'creative-tech',  label: 'Creative Tech' },
   ];
 
+  // More-page filters — creative / personal-work taxonomy. Different from landing
+  // because the gallery surfaces a different kind of work (games, performances,
+  // physical computing, fabrication) that doesn't map to client-work labels.
+  const FILTER_DEFS_MORE = [
+    { id: '',          label: 'All' },
+    { id: 'games',     label: 'Games' },
+    { id: 'av',        label: 'A/V' },
+    { id: 'physical',  label: 'Physical' },
+    { id: 'graphic',   label: 'Graphic' },
+    { id: 'ai',        label: 'AI' },
+    { id: 'ui',        label: 'UI' },
+  ];
+
+  const IS_MORE_PAGE = /\/more-projects-gallery(\/|$)/.test(location.pathname);
+  const FILTER_DEFS = IS_MORE_PAGE ? FILTER_DEFS_MORE : FILTER_DEFS_LANDING;
+
   function initFilterBar() {
     // Only mount on pages that have a filter target.
     const hasProjects = document.querySelector('[data-tags]');
     if (!hasProjects) return;
     if (document.querySelector('.filter-bar')) return;
 
-    const hero = document.querySelector('.hero-section');
-    const mountAfter = hero || document.querySelector('section');
-    if (!mountAfter) return;
-
+    // Build the chip bar element (DOM only; mounting is page-specific below).
     const bar = document.createElement('nav');
-    bar.className = 'filter-bar';
+    bar.className = 'filter-bar' + (IS_MORE_PAGE ? ' filter-bar--inline' : '');
     bar.setAttribute('aria-label', 'Filter projects by capability');
     bar.innerHTML = '<span class="filter-label">Filter</span>';
     for (const def of FILTER_DEFS) {
@@ -83,9 +97,21 @@
       btn.addEventListener('click', () => applyFilter(def.id, true));
       bar.appendChild(btn);
     }
-    mountAfter.parentNode.insertBefore(bar, mountAfter.nextSibling);
 
-    // Mount empty-state message right after the filter bar so it lands in the project area.
+    // Mount point — Landing: after the hero. More: inline before the cards grid
+    // (no sticky, no FAB — 21 finite cards don't need always-on filter access).
+    if (IS_MORE_PAGE) {
+      const grid = document.querySelector('.dyn-flex');
+      if (!grid) return;
+      grid.parentNode.insertBefore(bar, grid);
+    } else {
+      const hero = document.querySelector('.hero-section');
+      const mountAfter = hero || document.querySelector('section');
+      if (!mountAfter) return;
+      mountAfter.parentNode.insertBefore(bar, mountAfter.nextSibling);
+    }
+
+    // Empty-state message right after the filter bar so it lands in the project area.
     mountEmptyState(bar);
 
     // Initial filter: from hash if present
@@ -119,6 +145,108 @@
       return document.querySelectorAll('[data-tags]').length;
     }
     return document.querySelectorAll('[data-tags~="' + tagId + '"]').length;
+  }
+
+  // ------------------------------------------------------------------
+  // 3b) Mobile: filter via a floating button + bottom sheet.
+  //     The static filter bar is hidden on mobile (CSS) — this gives
+  //     thumb-reachable filter access without competing for the top strip
+  //     or scrolling jankily.
+  // ------------------------------------------------------------------
+  function initFilterFab() {
+    if (!window.matchMedia('(max-width: 768px)').matches) return;
+    if (!document.querySelector('[data-tags]')) return;
+    if (document.querySelector('.filter-fab')) return;
+    // On the More gallery the filter is inline below the page header — no FAB.
+    if (IS_MORE_PAGE) return;
+
+    const fab = document.createElement('button');
+    fab.type = 'button';
+    fab.className = 'filter-fab';
+    fab.setAttribute('aria-label', 'Open filter');
+    fab.setAttribute('aria-haspopup', 'true');
+    fab.setAttribute('aria-expanded', 'false');
+    fab.innerHTML =
+      '<span class="filter-fab-icon" aria-hidden="true">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>' +
+      '</span>' +
+      '<span class="filter-fab-label">Filter</span>' +
+      '<span class="filter-fab-current" hidden></span>';
+    document.body.appendChild(fab);
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'filter-sheet-backdrop';
+    backdrop.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(backdrop);
+
+    const sheet = document.createElement('div');
+    sheet.className = 'filter-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Filter projects');
+    sheet.innerHTML =
+      '<div class="filter-sheet-handle" aria-hidden="true"></div>' +
+      '<div class="filter-sheet-head">' +
+        '<h3 class="filter-sheet-title">Filter projects</h3>' +
+        '<button type="button" class="filter-sheet-close" aria-label="Close">×</button>' +
+      '</div>' +
+      '<div class="filter-sheet-chips"></div>';
+    document.body.appendChild(sheet);
+
+    const chipContainer = sheet.querySelector('.filter-sheet-chips');
+    for (const def of FILTER_DEFS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'filter-chip sheet-chip';
+      btn.dataset.filter = def.id;
+      btn.setAttribute('aria-pressed', 'false');
+      const count = countCards(def.id);
+      if (def.id && count === 0) btn.classList.add('is-zero');
+      btn.innerHTML = def.label + (def.id ? '<span class="count">' + count + '</span>' : '');
+      btn.addEventListener('click', () => {
+        applyFilter(def.id, true);
+        closeSheet();
+      });
+      chipContainer.appendChild(btn);
+    }
+
+    function openSheet() {
+      document.body.classList.add('sheet-open');
+      fab.setAttribute('aria-expanded', 'true');
+    }
+    function closeSheet() {
+      document.body.classList.remove('sheet-open');
+      fab.setAttribute('aria-expanded', 'false');
+    }
+    function updateFabLabel() {
+      const id = document.documentElement.getAttribute('data-filter') || '';
+      const def = FILTER_DEFS.find((d) => d.id === id);
+      const cur = fab.querySelector('.filter-fab-current');
+      if (id && def) {
+        cur.hidden = false;
+        cur.textContent = def.label;
+        fab.classList.add('has-active');
+      } else {
+        cur.hidden = true;
+        cur.textContent = '';
+        fab.classList.remove('has-active');
+      }
+    }
+
+    fab.addEventListener('click', openSheet);
+    backdrop.addEventListener('click', closeSheet);
+    sheet.querySelector('.filter-sheet-close').addEventListener('click', closeSheet);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.body.classList.contains('sheet-open')) closeSheet();
+    });
+
+    // Reflect filter changes (whether triggered from the sheet, hash deep-link,
+    // or the desktop bar mounted on tablet→mobile resize) into the FAB label.
+    new MutationObserver(updateFabLabel).observe(
+      document.documentElement,
+      { attributes: true, attributeFilter: ['data-filter'] }
+    );
+    updateFabLabel();
   }
 
   function applyFilter(tagId, writeHash) {
@@ -256,7 +384,49 @@
     initScaleSocialGate();
     initNameWrapper();
     initFilterBar();
+    initFilterFab();
     initMornovaDemoAnchor();
+    initScrollUI();
+  }
+
+  // Scroll-driven UI affordances:
+  //   1. `body.nav-solid` — turns the transparent Webflow navbar into a translucent
+  //      blurred fill once the user is past the hero, so cards / filter chips don't
+  //      bleed through the top strip as they scroll.
+  //   2. `body.filter-pinned` — true when the .filter-bar has reached its sticky
+  //      position. Used to add a subtle shadow under it (so it lifts from content).
+  function initScrollUI() {
+    const filterBar = document.querySelector('.filter-bar');
+    let filterNaturalTop = null;
+    function measure() {
+      if (!filterBar) return;
+      // Read the bar's offset from the document top while it's NOT pinned.
+      const wasPinned = document.body.classList.contains('filter-pinned');
+      document.body.classList.remove('filter-pinned');
+      const rect = filterBar.getBoundingClientRect();
+      filterNaturalTop = rect.top + window.scrollY;
+      if (wasPinned) document.body.classList.add('filter-pinned');
+    }
+    measure();
+    window.addEventListener('resize', measure, { passive: true });
+
+    let ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        document.body.classList.toggle('nav-solid', y > 80);
+        if (filterBar && filterNaturalTop != null) {
+          // Account for the filter bar's `top:` offset on mobile (68px) vs desktop (0).
+          const stickyTop = parseFloat(getComputedStyle(filterBar).top) || 0;
+          document.body.classList.toggle('filter-pinned', y + stickyTop >= filterNaturalTop);
+        }
+        ticking = false;
+      });
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
   }
 
   if (document.readyState === 'loading') {
