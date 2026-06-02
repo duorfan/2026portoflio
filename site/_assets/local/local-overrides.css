@@ -1,0 +1,570 @@
+/* =====================================================================
+   Duorfan portfolio — local overrides
+   Loaded after the captured Webflow CSS, so every rule here is final.
+   Organized top-down to match the page reading order.
+   ===================================================================== */
+
+/* ---------- 1. Name wrapper + pronunciation tooltip ------------------- */
+/* (Pre-existing inline styles migrated from the captured HTML.) */
+.name-wrapper { display: inline-block; position: relative; }
+.hint-icon {
+  display: inline-block; margin-left: 4px; font-size: 0.5em;
+  color: #9DC1E0; vertical-align: super; cursor: pointer;
+  transition: transform 0.2s ease; padding: 8px; margin: -8px;
+}
+@media (max-width: 768px) {
+  .hint-icon { font-size: 0.6em; padding: 12px; margin: -12px; }
+}
+.hint-icon:active { transform: scale(0.9); }
+.pronunciation-tooltip {
+  position: absolute; bottom: calc(100% + 12px); left: 50%;
+  transform: translateX(-50%); background: #C8D9E8; color: #4A5664;
+  padding: 12px 18px; border-radius: 10px; font-size: 18px;
+  font-family: inherit; font-weight: 400; white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); z-index: 1000;
+}
+.pronunciation-tooltip::after {
+  content: ''; position: absolute; top: 100%; left: 50%;
+  transform: translateX(-50%); border: 8px solid transparent;
+  border-top-color: #C8D9E8;
+}
+.name-wrapper:hover .pronunciation-tooltip,
+.pronunciation-tooltip.active {
+  opacity: 1; transform: translateX(-50%) translateY(-4px); pointer-events: auto;
+}
+@media (max-width: 768px) {
+  .pronunciation-tooltip { bottom: calc(100% + 8px); font-size: 16px; }
+}
+
+/* ---------- 2. Discover Projects CTA --------------------------------- */
+.link-block-8 {
+  background-color: var(--dark-brown) !important;
+  border-color: var(--dark-brown) !important;
+  box-shadow: 0 4px 14px rgba(73, 67, 62, 0.18);
+  transition: background-color .2s ease, transform .15s ease, box-shadow .2s ease;
+}
+.link-block-8 .buttontext { color: var(--beige) !important; }
+.link-block-8 .image-20 { filter: brightness(0) invert(1); }
+.link-block-8:hover {
+  background-color: var(--brandcolor) !important;
+  border-color: var(--brandcolor) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(73, 67, 62, 0.22);
+}
+.link-block-8:hover .buttontext { color: var(--dark-brown) !important; }
+.link-block-8:hover .image-20 { filter: none; }
+
+/* ---------- 3. "Now building" line (under hero) ---------------------- */
+.now-building {
+  margin-top: 18px;
+  font-family: Montserrat, sans-serif;
+  font-size: 15px;
+  color: var(--light-brown);
+  letter-spacing: 0.02em;
+}
+.now-building::before {
+  content: "● ";
+  color: #5BBF8E;
+  font-size: 9px;
+  vertical-align: middle;
+  margin-right: 4px;
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+.now-building b {
+  color: var(--dark-brown);
+  font-weight: 600;
+  margin-right: 4px;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* ---------- 4. Filter bar (sticky on scroll) ------------------------- */
+.filter-bar {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--beige);
+  border-bottom: 1px solid rgba(153, 136, 122, 0.18);
+  padding: 12px 32px;
+  display: flex; gap: 8px; flex-wrap: wrap;
+  justify-content: center; align-items: center;
+  backdrop-filter: saturate(140%) blur(6px);
+  -webkit-backdrop-filter: saturate(140%) blur(6px);
+}
+.filter-bar .filter-label {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--light-brown); margin-right: 8px;
+}
+.filter-chip {
+  font-family: Montserrat, sans-serif;
+  font-size: 13px; font-weight: 500;
+  padding: 7px 14px; border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--border-brown);
+  color: var(--dark-brown);
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .12s ease;
+  white-space: nowrap;
+}
+.filter-chip:hover {
+  background: rgba(182, 203, 231, 0.25);
+  border-color: var(--brandcolor);
+  transform: translateY(-1px);
+}
+.filter-chip[aria-pressed="true"] {
+  background: var(--dark-brown);
+  color: var(--beige);
+  border-color: var(--dark-brown);
+}
+.filter-chip .count {
+  display: inline-block; margin-left: 6px;
+  font-size: 11px; opacity: 0.6; font-variant-numeric: tabular-nums;
+}
+@media (max-width: 768px) {
+  .filter-bar { padding: 10px 16px; }
+  .filter-chip { font-size: 12px; padding: 6px 11px; }
+  .filter-bar .filter-label { display: none; }
+}
+
+/* Filter behavior — hide cards that lack the active tag. */
+html[data-filter] .collection-item,
+html[data-filter] .collection-item-2 {
+  transition: opacity .18s ease;
+}
+html[data-filter="ai-build"]      .collection-item:not([data-tags~="ai-build"]),
+html[data-filter="ai-build"]      .collection-item-2:not([data-tags~="ai-build"]),
+html[data-filter="ai-film"]       .collection-item:not([data-tags~="ai-film"]),
+html[data-filter="ai-film"]       .collection-item-2:not([data-tags~="ai-film"]),
+html[data-filter="product-design"] .collection-item:not([data-tags~="product-design"]),
+html[data-filter="product-design"] .collection-item-2:not([data-tags~="product-design"]),
+html[data-filter="ux-research"]   .collection-item:not([data-tags~="ux-research"]),
+html[data-filter="ux-research"]   .collection-item-2:not([data-tags~="ux-research"]),
+html[data-filter="front-end"]     .collection-item:not([data-tags~="front-end"]),
+html[data-filter="front-end"]     .collection-item-2:not([data-tags~="front-end"]),
+html[data-filter="creative-tech"] .collection-item:not([data-tags~="creative-tech"]),
+html[data-filter="creative-tech"] .collection-item-2:not([data-tags~="creative-tech"]) {
+  display: none;
+}
+/* Hide a section entirely when none of its cards match the active filter. */
+.section-empty { display: none; }
+
+/* Empty-state message — shown when the active filter yields 0 visible cards on the page. */
+.filter-empty-state {
+  display: none;
+  max-width: 540px;
+  margin: 60px auto 80px;
+  padding: 32px 24px;
+  text-align: center;
+  font-family: Montserrat, sans-serif;
+  color: var(--light-brown);
+}
+.filter-empty-state .emoji {
+  font-size: 28px; display: block; margin-bottom: 10px; opacity: 0.7;
+}
+.filter-empty-state .msg { font-size: 15px; line-height: 1.55; margin: 0 0 14px; }
+.filter-empty-state .crosslink {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 600;
+  color: var(--dark-brown); text-decoration: none;
+  border-bottom: 2px solid var(--brandcolor); padding-bottom: 2px;
+  transition: gap .15s ease;
+}
+.filter-empty-state .crosslink:hover { gap: 10px; }
+body.is-empty-filter .filter-empty-state { display: block; }
+
+/* Dim chips that have a count of 0 (still clickable, but visibly de-emphasized). */
+.filter-chip.is-zero {
+  opacity: 0.45;
+}
+.filter-chip.is-zero:hover { opacity: 0.7; }
+
+/* ---------- Project case-study bottom carousel — chip styling ---------- */
+.other-projects .carousel-chip-row {
+  margin: 6px 0 4px;
+  gap: 4px;
+}
+.other-projects .carousel-chip-row .chip {
+  font-size: 10px;
+  padding: 3px 8px;
+}
+.other-projects .summary-title {
+  margin: 14px 0 6px;
+  font-size: 20px;
+}
+.other-projects .image-7 {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+/* ChatITP doesn't have a captured hero image — render a soft gradient swatch instead. */
+.other-projects .image-7.chatitp-swatch {
+  background: linear-gradient(135deg, #C9D9EF 0%, #E8D5C4 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 56px; color: var(--dark-brown);
+  font-family: 'Playfair Display', serif;
+}
+/* Switch the original 3-col grid to a centered flex layout so orphan rows (e.g. 7 cards
+   = 3+3+1) don't dangle left. */
+.other-projects {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: center;
+}
+.other-projects > .w-dyn-item {
+  flex: 0 1 calc(33.333% - 16px);
+  min-width: 220px;
+  max-width: 320px;
+}
+
+/* ---------- 5. Card chips (replaces the old .tag line) --------------- */
+.chip-row {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin: 8px 0 6px;
+}
+.chip {
+  display: inline-flex; align-items: center;
+  font-family: Montserrat, sans-serif;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 10px; border-radius: 999px;
+  line-height: 1.4; white-space: nowrap;
+}
+.chip-primary {
+  background: var(--brandcolor);
+  color: var(--dark-brown);
+}
+.chip-primary.chip-ai     { background: #C9D9EF; }   /* AI Build — slightly cooler blue */
+.chip-primary.chip-film   { background: #E8D5C4; }   /* AI Film — warm sand */
+.chip-primary.chip-design { background: #D3E0CC; }   /* Product Design — sage */
+.chip-secondary {
+  background: transparent;
+  color: var(--light-brown);
+  border: 1px solid var(--border-brown);
+  font-weight: 500;
+}
+.chip-locked {
+  background: rgba(153, 136, 122, 0.18);
+  color: var(--dark-brown);
+}
+.chip-locked::before { content: "🔒 "; }
+.chip-live::before { content: "● "; color: #5BBF8E; font-size: 9px; vertical-align: middle; margin-right: 2px; }
+
+.stack-row {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  margin-top: 6px;
+}
+.stack-chip {
+  font-family: Montserrat, sans-serif;
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--tan);
+  padding: 2px 7px; border-radius: 4px;
+  background: rgba(153, 136, 122, 0.08);
+}
+
+.outcome-line {
+  margin-top: 6px;
+  font-family: Montserrat, sans-serif;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--light-brown);
+}
+
+/* ---------- 5b. Force my new AI Builds cards visible (override Webflow IX2 baseline) -- */
+#ai-builds .secondary-heading.project-title,
+#ai-builds .transparent-subtitle,
+#ai-builds .cover-img.profile-img,
+#ai-builds .tag {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* ---------- 5c. Force Design Work chip-rows visible too --------------------
+   chipifyDesignTags() rewrites <div class="tag"> → <div class="chip-row design-chip-row">
+   but keeps Webflow's inline `opacity: 0.09; transform: translate3d(-50px,...)`. The IX2
+   timeline no longer matches the new class, so without this override the chip pills stay
+   invisible. Force them on with a subtle fade-in so the section still feels animated. */
+#selected-project .design-chip-row {
+  opacity: 1 !important;
+  transform: none !important;
+  animation: chipFadeIn 0.4s ease both;
+}
+@keyframes chipFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+#ai-builds .collection-item .div-block-10 {
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
+}
+#ai-builds .collection-item .cover-img.profile-img {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+#ai-builds .collection-item .secondary-heading.project-title {
+  margin: 0 0 4px;
+  font-size: 28px;
+  color: var(--dark-brown);
+}
+#ai-builds .collection-item .transparent-subtitle {
+  color: var(--light-brown);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+
+/* ---------- 6. Section headers (AI Builds / Design Work / Films) ----- */
+.section-subtitle {
+  font-family: Montserrat, sans-serif;
+  font-size: 15px;
+  color: var(--light-brown);
+  text-align: center;
+  margin: -10px 0 22px;
+  letter-spacing: 0.01em;
+}
+.section-ai-films .secondary-heading,
+.section-ai-films .section-subtitle { /* quieter */ }
+.section-ai-films .secondary-heading { font-size: 32px; }
+
+/* ---------- 6b. Unified section rhythm + backgrounds --------------------
+   Goal: visually differentiate AI Builds / Selected Design Work / AI Films
+   while keeping vertical spacing identical at every breakpoint. Uses clamp()
+   so spacing scales smoothly between mobile (56px) and desktop (96px). */
+:root {
+  --section-pad-y: clamp(56px, 8vw, 96px);
+  --section-pad-x: clamp(20px, 5vw, 48px);
+  --bg-ai-builds:  #f3e9d8;   /* warm cream — feels like a workshop bench */
+  --bg-design:     var(--beige);  /* default — anchor / neutral */
+  --bg-ai-films:   #1f1c1a;   /* deep, cinematic */
+  --bg-about:      #ece4dc;   /* slightly cooler, restful */
+}
+article#ai-builds,
+article#selected-project,
+article#ai-films,
+.section-about-snapshot {
+  padding-top: var(--section-pad-y);
+  padding-bottom: var(--section-pad-y);
+  padding-left: var(--section-pad-x);
+  padding-right: var(--section-pad-x);
+  margin: 0;
+}
+article#ai-builds        { background-color: var(--bg-ai-builds); }
+article#selected-project { background-color: var(--bg-design); }
+article#ai-films         { background-color: var(--bg-ai-films); }
+.section-about-snapshot  { background-color: var(--bg-about); padding-top: var(--section-pad-y); padding-bottom: var(--section-pad-y); }
+
+/* AI Films text needs to flip to cream against the dark background. */
+article#ai-films .secondary-heading,
+article#ai-films .section-subtitle,
+article#ai-films .ai-film-overlay h3 { color: var(--beige); }
+article#ai-films .section-subtitle { color: rgba(250, 244, 238, 0.65); }
+
+/* Cards inside AI Films keep their dark overlay but the placeholder card needs
+   a softer outline to read against the new dark bg. */
+article#ai-films .ai-film-card.is-placeholder {
+  background: rgba(250, 244, 238, 0.04);
+  border: 1px dashed rgba(250, 244, 238, 0.22);
+  color: rgba(250, 244, 238, 0.6);
+}
+
+/* Inner containers should not add their own padding on top of the section pad. */
+article#ai-builds .container.w-container,
+article#selected-project .container.w-container,
+article#ai-films .ai-films-grid,
+.section-about-snapshot > .w-container { padding-left: 0; padding-right: 0; }
+
+/* ---------- 7. AI Films cards (looping video previews) --------------- */
+.ai-films-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 24px;
+  max-width: 940px;
+  margin: 0 auto;
+}
+.ai-film-card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #161616;
+  aspect-ratio: 16/9;
+  display: block;
+  text-decoration: none;
+  color: var(--beige);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.ai-film-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.18); }
+.ai-film-card video {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.ai-film-overlay {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 16px 18px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  color: white;
+}
+.ai-film-overlay h3 {
+  margin: 0 0 4px;
+  font-family: Montserrat, sans-serif;
+  font-size: 17px; font-weight: 600;
+}
+.ai-film-overlay .ai-film-meta {
+  font-size: 12px; opacity: 0.85; letter-spacing: 0.02em;
+}
+.ai-film-card.placeholder {
+  background: var(--whitebeige);
+  border: 2px dashed var(--border-brown);
+  color: var(--light-brown);
+  display: flex; align-items: center; justify-content: center;
+  font-family: Montserrat, sans-serif; font-size: 14px;
+}
+
+/* ---------- 8. Mornova "Live demo" pill ------------------------------ */
+.live-demo-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0 auto 14px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(91, 191, 142, 0.12);
+  color: #2E7556;
+  font-family: Montserrat, sans-serif;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.live-demo-pill::before {
+  content: "";
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #5BBF8E;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+.live-demo-wrap { text-align: center; }
+
+/* ---------- 9. Scale Social password gate ---------------------------- */
+body.gated-hidden > *:not(.gate-modal) { visibility: hidden; }
+.gate-modal {
+  position: fixed; inset: 0;
+  background: var(--beige);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 24px;
+}
+.gate-card {
+  max-width: 420px; width: 100%;
+  background: white;
+  border: 1px solid var(--border-brown);
+  border-radius: 18px;
+  padding: 36px 32px;
+  box-shadow: 0 20px 60px rgba(73, 67, 62, 0.12);
+  text-align: center;
+  font-family: Montserrat, sans-serif;
+}
+.gate-card h2 {
+  margin: 0 0 8px;
+  font-size: 22px; color: var(--dark-brown); font-weight: 700;
+}
+.gate-card p {
+  margin: 0 0 22px;
+  font-size: 14px; color: var(--light-brown); line-height: 1.5;
+}
+.gate-card input[type="password"] {
+  width: 100%; box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--border-brown);
+  border-radius: 10px;
+  font-size: 15px; font-family: inherit;
+  background: var(--whitebeige);
+  margin-bottom: 12px;
+}
+.gate-card input:focus {
+  outline: none; border-color: var(--brandcolor);
+  box-shadow: 0 0 0 3px rgba(182, 203, 231, 0.35);
+}
+.gate-card button {
+  width: 100%;
+  padding: 12px 18px;
+  background: var(--dark-brown);
+  color: var(--beige);
+  border: none; border-radius: 10px;
+  font-family: inherit; font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  transition: background-color .15s ease;
+}
+.gate-card button:hover { background: var(--brandcolor); color: var(--dark-brown); }
+.gate-card .gate-error {
+  margin-top: 10px; min-height: 18px;
+  font-size: 13px; color: #C25E4A;
+}
+.gate-card .gate-hint {
+  margin-top: 18px; padding-top: 16px;
+  border-top: 1px solid var(--border-brown);
+  font-size: 12px; color: var(--tan);
+}
+.gate-card .gate-hint a { color: var(--dark-brown); text-decoration: underline; }
+
+/* ---------- 10. About snapshot on home ------------------------------- */
+.about-snapshot {
+  max-width: 940px; margin: 0 auto;
+  padding: 60px 32px;
+  display: flex; gap: 36px; align-items: center;
+  flex-wrap: wrap;
+}
+.about-snapshot img {
+  width: 140px; height: 140px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0;
+  border: 3px solid var(--whitebeige);
+  box-shadow: 0 8px 24px rgba(73, 67, 62, 0.10);
+}
+.about-snapshot .about-snapshot-text {
+  flex: 1; min-width: 260px;
+  font-family: Montserrat, sans-serif;
+}
+.about-snapshot h3 {
+  margin: 0 0 10px;
+  font-family: 'Playfair Display', serif;
+  font-size: 26px; color: var(--dark-brown); font-weight: 600;
+}
+.about-snapshot p {
+  margin: 0 0 14px;
+  font-size: 15px; line-height: 1.6;
+  color: var(--light-brown);
+}
+.about-snapshot .about-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: Montserrat, sans-serif; font-size: 14px; font-weight: 600;
+  color: var(--dark-brown); text-decoration: none;
+  border-bottom: 2px solid var(--brandcolor);
+  padding-bottom: 2px;
+  transition: gap .15s ease;
+}
+.about-snapshot .about-link:hover { gap: 10px; }
+
+/* ---------- 11. Footer availability ask ------------------------------ */
+.footer-ask {
+  margin: 0 auto 18px;
+  max-width: 540px;
+  text-align: center;
+  font-family: Montserrat, sans-serif;
+  font-size: 15px;
+  color: var(--beige);
+  line-height: 1.55;
+  opacity: 0.92;
+}
+.footer-ask b {
+  display: block;
+  font-weight: 700;
+  font-size: 17px;
+  margin-bottom: 4px;
+  color: var(--whitebeige);
+}
+
+/* ---------- 12. Misc: hide the now-obsolete "I've also become…" h1 --
+   We absorb their content into AI Builds; suppress originals so the
+   patch is reversible if we ever revert. */
+.legacy-builder-block { display: none; }

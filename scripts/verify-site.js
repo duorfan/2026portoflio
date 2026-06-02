@@ -5,7 +5,7 @@ const CDP = require('chrome-remote-interface');
 const fs = require('fs');
 const path = require('path');
 
-const BASE = 'http://localhost:5173';
+const BASE = process.env.BASE || 'http://localhost:5173';
 const PAGES = [
   '/',
   '/about-me',
@@ -17,6 +17,7 @@ const PAGES = [
   '/projects/ver-coaching',
   '/projects/capybara-ai',
   '/projects/self-coded-website',
+  '/projects/chat-itp',
 ];
 
 async function getBrowserWsUrl() {
@@ -120,6 +121,8 @@ async function checkPage(pagePath) {
     }
   }
 
-  fs.writeFileSync(path.join(__dirname, 'verify-report.json'), JSON.stringify(report, null, 2));
-  console.log('\nWrote verify-report.json');
+  const reportPath = path.join(__dirname, '..', 'diagnostics', 'verify-report.json');
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+  console.log('\nWrote', path.relative(path.join(__dirname, '..'), reportPath));
 })().catch((e) => { console.error('FATAL', e); process.exit(1); });

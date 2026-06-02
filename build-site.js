@@ -17,6 +17,8 @@ const ROOT = __dirname;
 const CAPTURED = path.join(ROOT, 'captured');
 const SITE = path.join(ROOT, 'site');
 const PRIMARY_HOST = 'www.duorfan.com';
+const SITE_CUSTOM_DIR = path.join(ROOT, 'site-customizations');
+const LOCAL_ASSETS_DIR = path.join(SITE, '_assets', 'local');
 
 function sanitizeFilename(name) {
   return name.replace(/[^a-zA-Z0-9._\-\/]/g, '_');
@@ -126,6 +128,426 @@ function stripResponsiveAttrs(html) {
   });
 }
 
+// =====================================================================
+// Customization helpers — each is idempotent (no-op if marker present).
+// =====================================================================
+
+function copyOverrideAssets() {
+  fs.mkdirSync(LOCAL_ASSETS_DIR, { recursive: true });
+  // Copy every file at the root of site-customizations/ into site/_assets/local/.
+  // Excludes files that have dedicated page-level handling (chat-itp.html). This makes the
+  // dir a drop-in spot for new media (images, videos, fonts) without touching build-site.js.
+  const SKIP = new Set(['chat-itp.html']);
+  for (const entry of fs.readdirSync(SITE_CUSTOM_DIR, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    if (SKIP.has(entry.name)) continue;
+    if (entry.name.startsWith('.')) continue;
+    fs.copyFileSync(
+      path.join(SITE_CUSTOM_DIR, entry.name),
+      path.join(LOCAL_ASSETS_DIR, entry.name)
+    );
+  }
+}
+
+function copyChatItpPage() {
+  const src = path.join(SITE_CUSTOM_DIR, 'chat-itp.html');
+  if (!fs.existsSync(src)) return;
+  const dest = path.join(SITE, 'projects', 'chat-itp', 'index.html');
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.copyFileSync(src, dest);
+}
+
+// Inject <link> and <script> for local overrides into every page's <head>.
+// Also strips the inline <style> and <script> blocks the captured home page
+// shipped, since their contents now live in local-overrides.{css,js}.
+function injectLocalAssets(html, rel) {
+  const linkTag  = '<link rel="stylesheet" href="/_assets/local/local-overrides.css?v=2">';
+  const scriptTag = '<script src="/_assets/local/local-overrides.js?v=2" defer></script>';
+  if (!html.includes(linkTag)) {
+    html = html.replace('</head>', `  ${linkTag}\n  ${scriptTag}\n</head>`);
+  }
+  // For the home page only: drop the inline <style>/<script> that the captured DOM still
+  // carries — their content is now in the overrides files. Strip from </body> backwards.
+  if (rel === 'index.html') {
+    html = html.replace(/<style>\s*\.name-wrapper[\s\S]*?<\/script>\s*<\/body>/, '</body>');
+  }
+  return html;
+}
+
+// Footer patches — remove any previously-injected availability ask and bump the year.
+function applyFooterAsk(html) {
+  // 1) Strip the availability ask if a previous build injected it.
+  html = html.replace(/<div class="footer-ask">[\s\S]*?<\/div>/g, '');
+  // 2) Bump copyright year 2025 → 2026 (covers both the en-dash and plain-dash variants).
+  html = html.replace(/@ 2025 DuorfanFAN/g, '@ 2026 DuorfanFAN');
+  return html;
+}
+
+// Single source of truth for the "Take a look at my other projects~" carousel that
+// lives at the bottom of each project case-study page. Order: AI Builds first (lead with
+// the new identity), then design work.
+const PROJECT_REGISTRY = [
+  { slug: '/mornova',                 title: 'Mornova',       img: '/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/692fe937530f1ae410a0f92c_Mornova_20Final_20Pre.jpg',
+    primary: { label: 'AI Build', color: 'chip-ai' }, secondary: ['Product Design', 'Live demo'] },
+  { slug: '/scalesocial',             title: 'Scale Social',  img: '/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/6938a001e188d69d339049f8_hero_20ss.avif',
+    primary: { label: 'AI Build', color: 'chip-ai' }, secondary: ['UX Research', 'Client work'] },
+  { slug: '/projects/chat-itp',       title: 'ChatITP',       img: null,
+    primary: { label: 'AI Build', color: 'chip-ai' }, secondary: ['Early Exploration'] },
+  { slug: '/projects/schego',         title: 'ScheGo',        img: '/_assets/cdn.prod.website-files.com/647bb48e77bb5a186dd60dca/672cfebe5305e5054d35f460_hero_20schego.png',
+    primary: { label: 'Product Design', color: 'chip-design' }, secondary: ['UX Research', 'Case study'] },
+  { slug: '/projects/cyco',           title: 'CYCO',          img: '/_assets/cdn.prod.website-files.com/647bb48e77bb5a186dd60dca/66b694e24c6801c451aa6070_hero6.png',
+    primary: { label: 'Product Design', color: 'chip-design' }, secondary: ['UX Research', 'Case study'] },
+  { slug: '/projects/ver-coaching',   title: 'Ver Coaching',  img: '/_assets/cdn.prod.website-files.com/647bb48e77bb5a186dd60dca/68b12cc8aa1a940e1cb096c9_hero_20ver.png',
+    primary: { label: 'Product Design', color: 'chip-design' }, secondary: ['UX Research', 'Case study'] },
+  { slug: '/projects/capybara-ai',    title: 'Capybara.AI',   img: '/_assets/cdn.prod.website-files.com/647bb48e77bb5a186dd60dca/65e5384042a5e623f87a6638_01_201-p-2000.webp',
+    primary: { label: 'Web Design', color: 'chip-design' }, secondary: ['Front-End', 'Graphic Design'] },
+  { slug: '/projects/self-coded-website', title: 'Web Roots', img: '/_assets/cdn.prod.website-files.com/647bb48e77bb5a186dd60dca/6484f32de6dda9d4b94d1c80_hero5.webp',
+    primary: { label: 'Web Design', color: 'chip-design' }, secondary: ['Front-End', 'Graphic Design'] },
+];
+
+function renderCarouselCard(p) {
+  const cover = p.img
+    ? `<img src="${p.img}" loading="lazy" alt="" class="image-7">`
+    : `<div class="image-7 chatitp-swatch" aria-hidden="true">💬</div>`;
+  const chips = [
+    `<span class="chip chip-primary ${p.primary.color}">${p.primary.label}</span>`,
+    ...p.secondary.map(s => `<span class="chip chip-secondary">${s}</span>`),
+  ].join('');
+  return `<div role="listitem" class="w-dyn-item"><a href="${p.slug}" class="link-block-2 w-inline-block">${cover}<h3 class="summary-title">${p.title}</h3><div class="chip-row carousel-chip-row">${chips}</div></a></div>`;
+}
+
+// For a given project page, rewrite the "Take a look at my other projects~" carousel:
+// regenerates from PROJECT_REGISTRY with the current slug filtered out and modern chip styling.
+function rebuildOtherProjectsCarousel(html, currentSlug) {
+  // Locate <div role="list" class="other-projects w-dyn-items">...</div>
+  const startMarker = '<div role="list" class="other-projects w-dyn-items">';
+  const start = html.indexOf(startMarker);
+  if (start === -1) return html;
+  // Find the matching closing </div>. The captured Webflow markup is one long line, but the
+  // list immediately ends with </div></div></div> (close list / close list-wrapper / close
+  // container-3). We use a non-greedy scan looking for the boundary sentinel.
+  const after = html.indexOf('</div></div></div>', start);
+  if (after === -1) return html;
+  const listEnd = after; // position of the role-list's own closing </div>
+
+  const others = PROJECT_REGISTRY.filter(p => p.slug !== currentSlug);
+  const newInner = others.map(renderCarouselCard).join('');
+  return html.slice(0, start + startMarker.length) + newInner + html.slice(listEnd);
+}
+
+// Inside #selected-project, replace every <div class="tag">A | B | C</div> with
+// <div class="chip-row design-chip-row">[A][B][C]</div>. Keeps the original element's
+// attributes (data-w-id, inline style) so the Webflow scroll animations still target it.
+function chipifyDesignTags(html) {
+  const start = html.indexOf('<article id="selected-project"');
+  if (start === -1) return html;
+  const end = html.indexOf('</article>', start);
+  if (end === -1) return html;
+  const before = html.slice(0, start);
+  const middle = html.slice(start, end);
+  const after = html.slice(end);
+
+  // First-tag → chip-primary (with a discipline color hint), rest → chip-secondary.
+  const PRIMARY_COLOR = {
+    'UX&UI Design':              'chip-design',
+    'UX & UI Design':            'chip-design',
+    'UI/UX Design':              'chip-design',
+    'AI Conversation Design':    'chip-ai',
+    'Web Design':                'chip-design',
+  };
+
+  const transformed = middle.replace(
+    /(<div\b[^>]*?)\sclass="tag"([^>]*>)([^<]+)(<\/div>)/g,
+    (_m, lead, trail, text, close) => {
+      const parts = text
+        .replace(/&amp;/g, '&')
+        .split('|')
+        .map(s => s.trim())
+        .filter(Boolean);
+      if (!parts.length) return _m;
+      const chips = parts.map((p, i) => {
+        if (i === 0) {
+          const colorClass = PRIMARY_COLOR[p] || '';
+          return `<span class="chip chip-primary ${colorClass}">${p}</span>`;
+        }
+        return `<span class="chip chip-secondary">${p}</span>`;
+      }).join('');
+      // Replace the .tag class entirely; keep inline style + data-w-id so animations still fire.
+      return `${lead} class="chip-row design-chip-row"${trail}${chips}${close}`;
+    }
+  );
+
+  return before + transformed + after;
+}
+
+// ----- Home page (the big surgery) -----------------------------------
+function applyHomePagePatches(html) {
+  // 1) Hero copy
+  const oldHero1 = '<p class="summary-info intro">Designing digital and physical experiences</p><p class="summary-info intro">that make technology feel more human!</p>';
+  const newHero1 = '<p class="summary-info intro">I design and build AI-powered products —</p><p class="summary-info intro">and the experiences around them.</p>';
+  if (html.includes(oldHero1)) html = html.replace(oldHero1, newHero1);
+
+  // 2) Rename "Selected Projects" → "Selected Design Work"
+  html = html.replace(
+    '<h1 class="secondary-heading">Selected Projects</h1>',
+    '<h1 class="secondary-heading">Selected Design Work</h1>'
+  );
+
+  // 3) Add data-tags to each existing Design-Work card (by unique href)
+  const designTagMap = {
+    '/projects/schego':            'product-design ux-research',
+    '/projects/cyco':              'product-design ux-research',
+    '/projects/ver-coaching':      'product-design ux-research',
+    '/projects/capybara-ai':       'product-design front-end',
+    '/projects/self-coded-website':'front-end product-design',
+  };
+  for (const [href, tags] of Object.entries(designTagMap)) {
+    const finder = `class="collection-item w-dyn-item"><a href="${href}"`;
+    const insert = `class="collection-item w-dyn-item" data-tags="${tags}"><a href="${href}"`;
+    if (html.includes(finder) && !html.includes(insert)) {
+      html = html.replace(finder, insert);
+    }
+  }
+
+  // 4) Wrap the Design Work cards container so the filter can hide it cleanly
+  html = html.replace(
+    '<article id="selected-project" class="section-selected">',
+    '<article id="selected-project" class="section-selected" data-filterable-section>'
+  );
+
+  // 4b) Retarget the "Discover Projects" CTA. Original points to #selected-project, but with
+  //     the new IA AI Builds is now the first project section.
+  html = html.replace(
+    /href="#selected-project"(\s+class="link-block-8)/,
+    'href="#ai-builds"$1'
+  );
+
+  // 4c) Convert plain pipe-separated tags inside design cards into chip pills so they match
+  //     the AI Builds chip vocabulary. Operates only inside #selected-project (so AI Films
+  //     overlay text isn't touched).
+  html = chipifyDesignTags(html);
+
+  // 5) Build and INSERT the AI Builds section BEFORE article#selected-project
+  if (!html.includes('id="ai-builds"')) {
+    html = html.replace(
+      '<article id="selected-project"',
+      AI_BUILDS_SECTION + '<article id="selected-project"'
+    );
+  }
+
+  // 6) Replace the two "container-builder" blocks (Mornova + Scale Social) — they're absorbed
+  //    into AI Builds above. Match by their unique heading text.
+  html = removeContainerBuilderBlock(html, 'Recently, I’ve also become a builder...');
+  html = removeContainerBuilderBlock(html, 'Recently, I&rsquo;ve also become a builder...');
+  html = removeContainerBuilderBlock(html, 'Recently, I&#x27;ve also become a builder...');
+  html = removeContainerBuilderBlock(html, "Recently, I've also become a builder...");
+  html = removeContainerBuilderBlock(html, 'I also did a AI UGC case study');
+
+  // 7) Insert AI Films section AS A SIBLING after #selected-project, before the more-projects link.
+  //    The captured HTML has the more-link container *inside* article#selected-project, so we
+  //    must close that article first (inserting a fresh `</article>`) and then later strip the
+  //    now-orphaned trailing `</article>` from the same article (step 9).
+  if (!html.includes('id="ai-films"')) {
+    const anchor = '<div class="w-layout-blockcontainer container w-container"><a href="/more-projects-gallery"';
+    if (html.includes(anchor)) {
+      html = html.replace(anchor, '</article>' + AI_FILMS_SECTION + anchor);
+    }
+  }
+
+  // 8) Insert About snapshot BEFORE the footer
+  if (!html.includes('class="about-snapshot"')) {
+    html = html.replace('<section class="footer">', ABOUT_SNAPSHOT + '<section class="footer">');
+  }
+
+  // 9) Strip the orphaned `</article>` that originally closed #selected-project from the bottom
+  //    of the more-link container, since we already closed that article up at step 7. Without
+  //    this, AI Films and the more-link end up nested inside #selected-project.
+  html = html.replace(
+    '</div></article><section class="section-about-snapshot"',
+    '</div><section class="section-about-snapshot"'
+  );
+
+  // 10) Append the ChatITP card as the last card in Selected Design Work.
+  if (!html.match(/href="\/projects\/chat-itp"[^>]*class="link-block/)) {
+    const anchor = '</div></aside></div></article><article id="ai-films"';
+    if (html.includes(anchor)) {
+      html = html.replace(anchor, CHAT_ITP_DESIGN_CARD + anchor);
+    }
+  }
+
+  return html;
+}
+
+function removeContainerBuilderBlock(html, headingNeedle) {
+  // Match a <div class="w-layout-blockcontainer container-builder ..."> ... </div>
+  // whose inner HTML contains the heading needle. We need balanced div matching; do it by
+  // scanning forward and counting div depth.
+  const startRe = /<div\s+class="w-layout-blockcontainer container-builder w-container">/g;
+  let m;
+  while ((m = startRe.exec(html)) !== null) {
+    const start = m.index;
+    // Find matching close by scanning
+    let i = m.index + m[0].length;
+    let depth = 1;
+    while (i < html.length && depth > 0) {
+      const open = html.indexOf('<div', i);
+      const close = html.indexOf('</div>', i);
+      if (close < 0) break;
+      if (open >= 0 && open < close) { depth++; i = open + 4; }
+      else { depth--; i = close + 6; }
+    }
+    if (depth !== 0) continue;
+    const block = html.slice(start, i);
+    if (block.includes(headingNeedle)) {
+      html = html.slice(0, start) + html.slice(i);
+      startRe.lastIndex = start; // re-scan from same position
+    }
+  }
+  return html;
+}
+
+// ----- About page ----------------------------------------------------
+function applyAboutPatches(html) {
+  // 1) Self-description — update from "product designer" to the new hybrid identity.
+  html = html.replace(
+    'A product designer who still tears up at Minions',
+    'An AI product designer & builder who still tears up at Minions'
+  );
+
+  // 2) Duke is done — graduated, not studying. Restructures the sentence so the new role
+  //    can be tacked on naturally.
+  const oldEdu = 'I’m studying <a href="https://masters.pratt.duke.edu/design-technology-innovation/" target="_blank" class="link-6"><span class="text-span-18">Design &amp; Technology Innovation</span></a> at <strong>Duke</strong>, after earning my <strong>BFA</strong> in <a href="https://tisch.nyu.edu/itp" target="_blank" class="link-2"><span class="text-span-19">Interactive Media Arts</span></a> from <strong>NYU Tisch</strong> (with a minor in the Business of Entertainment, Media, and Technology).';
+  const newEdu = 'I just graduated with a Master’s in <a href="https://masters.pratt.duke.edu/design-technology-innovation/" target="_blank" class="link-6"><span class="text-span-18">Design &amp; Technology Innovation</span></a> from <strong>Duke</strong>, after earning my <strong>BFA</strong> in <a href="https://tisch.nyu.edu/itp" target="_blank" class="link-2"><span class="text-span-19">Interactive Media Arts</span></a> from <strong>NYU Tisch</strong> (with a minor in the Business of Entertainment, Media, and Technology). Next up: I’m joining <strong>Scale Social</strong> as a <strong>Product &amp; Tech Specialist</strong> — or, as I like to call it, an <strong>AI Product Designer &amp; Builder</strong>.';
+  if (html.includes(oldEdu)) html = html.replace(oldEdu, newEdu);
+
+  // 3) Dual-identity paragraph (replaces the old "tech companies and startups" line)
+  const oldBio = "I’ve worked with several <strong>tech companies</strong> and <strong>startups</strong>, designing digital and physical experiences that make technology feel more human.";
+  const newBio = 'I split my time between two modes: <strong>designing</strong> thoughtful product experiences across web, mobile, and physical interfaces — and <strong>building</strong> AI-powered products end-to-end, from research to shipped prototype. Recent builds include <strong>Mornova</strong> (an AI morning assistant), <strong>Scale Social</strong> (an AI UGC platform), and AI short films made in <strong>Runway</strong>.';
+  if (html.includes(oldBio)) html = html.replace(oldBio, newBio);
+
+  // 4) "How I work with AI" — replaces the old "exploring AI tools" line
+  const oldAi = "Lately, I’ve been exploring AI tools, from <strong>Runway</strong> (where I still have 90,000 credits left, oops) to <strong>Vibe Coding</strong>, trying to see how creative intuition meets machine logic.";
+  const newAi = '<strong>How I work with AI.</strong> AI is a tool, not the product. I use it to compress research, prototype faster, and ship features that would have taken a team. My builds favor calm UX and clear user value over flashy model demos.';
+  if (html.includes(oldAi)) html = html.replace(oldAi, newAi);
+
+  return html;
+}
+
+// ----- Mornova page --------------------------------------------------
+function applyMornovaPatches(html) {
+  if (html.includes('class="live-demo-pill"')) return html;
+  // Wrap the existing phone-mockup iframe area with a live-demo header.
+  const wrapAnchor = '<div class="mornova-phone-wrap">';
+  if (html.includes(wrapAnchor)) {
+    const pill = '<div class="live-demo-wrap" id="mornova-demo"><span class="live-demo-pill">Live demo</span></div>';
+    html = html.replace(wrapAnchor, pill + wrapAnchor);
+  }
+  return html;
+}
+
+// ----- More gallery — tag the 21 cards + mark its section filterable ---
+function applyMorePagePatches(html) {
+  // Tag the dark cards section so the filter's section-empty machinery can hide its heading
+  // when no cards match.
+  html = html.replace(
+    /<section\s+class="section-selected black-bg"(?![^>]*data-filterable-section)/,
+    '<section class="section-selected black-bg" data-filterable-section'
+  );
+  // Each .collection-item-2 has a tag scroll-right paragraph with a known string.
+  // We match the surrounding card by the unique combination of project title + tag text.
+  // Strategy: walk all cards, infer tag IDs from the tag text, write data-tags onto the card.
+  const tagInferences = [
+    { match: /touchdesigner|muse 2|p5\.js/i,                tags: 'creative-tech' },
+    { match: /motion capture|unreal engine|meta quest|blender/i, tags: 'creative-tech' },
+    { match: /machine learning|hand pose model|openai api/i, tags: 'creative-tech ai-build' },
+    { match: /runway|midjourney/i,                          tags: 'ai-film creative-tech' },
+    { match: /ui design|uiux|figma$/i,                      tags: 'product-design' },
+    { match: /web design|front end/i,                       tags: 'front-end product-design' },
+    { match: /unity|arduino|processing|garbage classification/i, tags: 'creative-tech' },
+    { match: /data visualization|scrollytelling|information design/i, tags: 'creative-tech' },
+    { match: /procreate|comics|adobe indesign|photoshop|illustrator|magazine|booklet|yearbook|costume|sewing|laser cutter|acrylic|jewelry organizer/i, tags: 'creative-tech' },
+    { match: /ableton|resolume|video edit|real-time performance/i, tags: 'creative-tech' },
+    { match: /trouble shooting/i,                            tags: 'product-design' },
+    { match: /clay|product\/interface design/i,              tags: 'creative-tech' },
+  ];
+  // Regex to find each card. The card div opens with class="collection-item-2 w-dyn-item"
+  // and the tag paragraph appears later inside.
+  return html.replace(
+    /(<div\s+[^>]*class="collection-item-2 w-dyn-item"[^>]*)(>[\s\S]*?<p\s+[^>]*class="tag scroll-right"[^>]*>)([^<]+)(<\/p>)/g,
+    (full, openDiv, mid, tagText, end) => {
+      if (openDiv.includes('data-tags=')) return full; // already tagged
+      let tags = 'creative-tech';
+      for (const rule of tagInferences) {
+        if (rule.match.test(tagText)) { tags = rule.tags; break; }
+      }
+      return `${openDiv} data-tags="${tags}"${mid}${tagText}${end}`;
+    }
+  );
+}
+
+// =====================================================================
+// New section markup (kept as constants for readability).
+// =====================================================================
+
+const AI_BUILDS_SECTION = `<article id="ai-builds" class="section-selected" data-filterable-section>
+  <div class="container w-container">
+    <h1 class="secondary-heading">AI Builds</h1>
+    <p class="section-subtitle">Products I designed and shipped end-to-end.</p>
+    <aside class="collection-list-wrapper-5 w-dyn-list">
+      <div role="list" class="collection-list-4 w-dyn-items">
+        <div role="listitem" class="collection-item w-dyn-item" data-tags="ai-build product-design"><a href="/mornova" class="link-block w-inline-block"><div class="div-block-10"><img alt="" loading="lazy" src="/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/692fe937530f1ae410a0f92c_Mornova_20Final_20Pre.jpg" class="cover-img profile-img"><h2 class="secondary-heading project-title">Mornova</h2>
+          <div class="chip-row"><span class="chip chip-primary chip-ai">AI Build</span><span class="chip chip-secondary">Product Design</span><span class="chip chip-secondary chip-live">Live demo</span></div>
+          <div class="stack-row"><span class="stack-chip">Claude</span><span class="stack-chip">Webflow</span><span class="stack-chip">Hardware</span></div>
+          <p class="transparent-subtitle">An AI morning assistant. Blends weather, calendar, and ambient lighting to wake me up with warm gradients and voice prompts.</p>
+          <p class="outcome-line">Daily-use personal product · functional prototype</p>
+        </div></a></div>
+        <div role="listitem" class="collection-item w-dyn-item" data-tags="ai-build ux-research"><a href="/scalesocial" class="link-block w-inline-block"><div class="div-block-10"><img alt="" loading="lazy" src="/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/6938a001e188d69d339049f8_hero_20ss.avif" class="cover-img profile-img"><h2 class="secondary-heading project-title">Scale Social <span style="font-size:0.6em; vertical-align: middle;">🔒</span></h2>
+          <div class="chip-row"><span class="chip chip-primary chip-ai">AI Build</span><span class="chip chip-secondary">UX Research</span><span class="chip chip-locked">Request access</span></div>
+          <div class="stack-row"><span class="stack-chip">Figma</span><span class="stack-chip">AI tooling</span><span class="stack-chip">Prototype</span></div>
+          <p class="transparent-subtitle">UX research and prototype work for an AI UGC platform — exploring control models that keep brand content authentic while adopting automation.</p>
+          <p class="outcome-line">Pitched and adopted by client team</p>
+        </div></a></div>
+      </div>
+    </aside>
+  </div>
+</article>`;
+
+const AI_FILMS_SECTION = `<article id="ai-films" class="section-ai-films" data-filterable-section>
+  <div class="container w-container" style="padding-bottom: 30px;">
+    <h1 class="secondary-heading">AI Films</h1>
+    <p class="section-subtitle">Generative video experiments.</p>
+    <div class="ai-films-grid">
+      <a href="/more-projects-gallery#filter=ai-film" class="ai-film-card collection-item" data-tags="ai-film">
+        <div style="background: linear-gradient(135deg, #1d3557 0%, #6b4e71 50%, #d4583b 100%); width:100%; height:100%; min-height:220px;"></div>
+        <div class="ai-film-overlay">
+          <h3>Space We Call Home</h3>
+          <div class="ai-film-meta">Runway + Midjourney + Adobe Premiere</div>
+        </div>
+      </a>
+      <div class="ai-film-card placeholder collection-item" data-tags="ai-film">
+        New film coming →
+      </div>
+    </div>
+  </div>
+</article>`;
+
+const CHAT_ITP_DESIGN_CARD = `<div role="listitem" class="collection-item w-dyn-item chatitp-design-card" data-tags="ai-build product-design"><a href="/projects/chat-itp" class="link-block w-inline-block"><div class="div-block-10" style="border-color: hsla(218, 45%, 80%, 1);"><div class="cover-img profile-img" style="background: linear-gradient(135deg, #C9D9EF 0%, #E8D5C4 100%); width: 100%; height: 380px; display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 56px; color: var(--dark-brown); opacity: 1;">💬</div><h2 class="secondary-heading project-title" style="opacity: 1;">ChatITP</h2><div class="tag" style="opacity: 1;">AI Conversation Design | OpenAI API | Early Exploration</div><p class="transparent-subtitle" style="opacity: 1;">An early experiment in conversational interfaces — exploring how natural-language prompts could replace traditional UI controls.</p></div></a></div>`;
+
+const ABOUT_SNAPSHOT = `<section class="section-about-snapshot">
+  <div class="about-snapshot">
+    <img src="/_assets/local/duorfan-profile-pic.jpg" alt="Duorfan">
+    <div class="about-snapshot-text">
+      <h3>Hi, I'm Duorfan.</h3>
+      <p>Half product designer, half AI builder. I design experiences that feel calm and human, and ship the AI products that power them. Recent work spans morning assistants, AI UGC platforms, generative films, and a lot of small experiments.</p>
+      <a href="/about-me" class="about-link">Read my story →</a>
+    </div>
+  </div>
+</section>`;
+
+// =====================================================================
+// Main IIFE — runs after all helper functions and section constants
+// have been declared above, so no TDZ issues.
+// =====================================================================
 (function main() {
   if (!fs.existsSync(CAPTURED)) {
     console.error('No ./captured directory found. Run cdp-crawl.js first.');
@@ -159,9 +581,6 @@ function stripResponsiveAttrs(html) {
     src = stripResponsiveAttrs(src);
     const { text, replacements } = rewriteTextWithManifest(src, urlMap);
     totalHtmlReplacements += replacements;
-    // HTML living under /_assets/<host>/... was captured from that subdomain and may use
-    // root-absolute paths (e.g. /assets/foo.js) that originally resolved against the
-    // subdomain root. Re-anchor those to /_assets/<host>/ so they resolve under our server.
     const rel = path.relative(SITE, filePath).split(path.sep).join('/');
     if (rel.startsWith('_assets/')) {
       const host = rel.split('/')[1];
@@ -182,75 +601,28 @@ function stripResponsiveAttrs(html) {
   });
   console.log(`  ~${totalCssReplacements} URL replacements`);
 
-  console.log('[customize] applying local landing-page tweaks ...');
-  applyLandingPageCustomizations(path.join(SITE, 'index.html'));
+  console.log('[customize] copying override assets ...');
+  copyOverrideAssets();
+  copyChatItpPage();
+
+  console.log('[customize] injecting overrides + applying per-page patches ...');
+  walkAndRewrite(SITE, ['.html'], (src, filePath) => {
+    let html = src;
+    const rel = path.relative(SITE, filePath).split(path.sep).join('/');
+    html = injectLocalAssets(html, rel);
+    html = applyFooterAsk(html);
+    if (rel === 'index.html')                            html = applyHomePagePatches(html);
+    else if (rel === 'about-me/index.html')              html = applyAboutPatches(html);
+    else if (rel === 'mornova/index.html')               html = applyMornovaPatches(html);
+    else if (rel === 'more-projects-gallery/index.html') html = applyMorePagePatches(html);
+    // Project case-study pages: rebuild the bottom "other projects" carousel from PROJECT_REGISTRY.
+    const projectSlugMatch = rel.match(/^projects\/([a-z0-9-]+)\/index\.html$/);
+    if (projectSlugMatch) {
+      const slug = '/projects/' + projectSlugMatch[1];
+      html = rebuildOtherProjectsCarousel(html, slug);
+    }
+    return html;
+  });
 
   console.log('Done. Local site at:', SITE);
 })();
-
-// Hand-authored tweaks to the landing page, kept in the build so they survive `npm run rebuild`.
-//   1. Guard the inline name-wrapper script against double-wrapping. The captured DOM already
-//      includes the wrapper (CDP saw it post-render), so without the guard the script wraps it
-//      again on each load and a second ⓘ appears.
-//   2. Restyle the "Discover Projects" CTA with a brand-dark fill, white arrow, and a hover
-//      lift to the brand-blue accent.
-function applyLandingPageCustomizations(landingPath) {
-  if (!fs.existsSync(landingPath)) return;
-  let html = fs.readFileSync(landingPath, 'utf8');
-
-  const guardBefore = `if (heading && heading.textContent.includes('Duorfan')) {
-      heading.innerHTML = heading.innerHTML.replace(`;
-  const guardAfter = `if (heading && heading.textContent.includes('Duorfan')) {
-      if (!heading.querySelector('.name-wrapper')) {
-        heading.innerHTML = heading.innerHTML.replace(`;
-  if (html.includes(guardBefore) && !html.includes(guardAfter)) {
-    html = html.replace(guardBefore, guardAfter);
-    // Close the new `if` block. The original `.replace(...);` call ends with `);` on the line
-    // after the wrapper string — wrap it with a matching `}`.
-    html = html.replace(
-      `'<span class="name-wrapper">Duorfan<span class="hint-icon">ⓘ</span><span class="pronunciation-tooltip">🚪 door + 🪭 fan</span></span>'\n      );`,
-      `'<span class="name-wrapper">Duorfan<span class="hint-icon">ⓘ</span><span class="pronunciation-tooltip">🚪 door + 🪭 fan</span></span>'\n        );\n      }`
-    );
-  }
-
-  const buttonCss = `
-  /* Discover Projects CTA — brand-aligned fill with hover */
-  .link-block-8 {
-    background-color: var(--dark-brown) !important;
-    border-color: var(--dark-brown) !important;
-    box-shadow: 0 4px 14px rgba(73, 67, 62, 0.18);
-    transition: background-color .2s ease, transform .15s ease, box-shadow .2s ease;
-  }
-  .link-block-8 .buttontext {
-    color: var(--beige) !important;
-  }
-  .link-block-8 .image-20 {
-    filter: brightness(0) invert(1);
-  }
-  .link-block-8:hover {
-    background-color: var(--brandcolor) !important;
-    border-color: var(--brandcolor) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(73, 67, 62, 0.22);
-  }
-  .link-block-8:hover .buttontext {
-    color: var(--dark-brown) !important;
-  }
-  .link-block-8:hover .image-20 {
-    filter: none;
-  }
-`;
-  // Inject before the first </style> that follows the pronunciation-tooltip rules.
-  const styleAnchor = `@media (max-width: 768px) {
-    .pronunciation-tooltip {
-      bottom: calc(100% + 8px);
-      font-size: 16px;
-    }
-  }
-</style>`;
-  if (html.includes(styleAnchor) && !html.includes('Discover Projects CTA')) {
-    html = html.replace(styleAnchor, styleAnchor.replace('</style>', buttonCss + '</style>'));
-  }
-
-  fs.writeFileSync(landingPath, html, 'utf8');
-}

@@ -1,6 +1,10 @@
 // Capture a full-page screenshot of the rebuilt site for visual verification.
 const CDP = require('chrome-remote-interface');
 const fs = require('fs');
+const path = require('path');
+
+const SHOTS_DIR = path.join(__dirname, '..', 'diagnostics', 'screenshots');
+fs.mkdirSync(SHOTS_DIR, { recursive: true });
 
 async function shoot(url, outPath) {
   const verRes = await fetch('http://localhost:9222/json/version');
@@ -29,6 +33,6 @@ async function shoot(url, outPath) {
 }
 
 (async () => {
-  await shoot('http://localhost:5173/', __dirname + '/screenshot-home-local.png');
-  await shoot('https://www.duorfan.com/', __dirname + '/screenshot-home-live.png');
+  await shoot('http://localhost:5173/',     path.join(SHOTS_DIR, 'screenshot-home-local.png'));
+  await shoot('https://www.duorfan.com/',   path.join(SHOTS_DIR, 'screenshot-home-live.png'));
 })().catch((e) => { console.error(e); process.exit(1); });

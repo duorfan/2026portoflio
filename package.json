@@ -4,10 +4,13 @@
   "description": "Local rebuild of www.duorfan.com captured via Chrome DevTools Protocol",
   "type": "commonjs",
   "scripts": {
-    "start": "node server.js",
-    "crawl": "node cdp-crawl.js",
-    "build": "node build-site.js",
-    "rebuild": "node cdp-crawl.js && node build-site.js"
+    "start":   "node server.js",
+    "crawl":   "node cdp-crawl.js",
+    "build":   "node build-site.js",
+    "rebuild": "node cdp-crawl.js && node build-site.js",
+    "verify":  "node scripts/verify-site.js",
+    "shoot":   "node scripts/shoot-scrolled.js",
+    "probe":   "node scripts/probe-filters.js"
   },
   "dependencies": {
     "chrome-remote-interface": "^0.34.0"
