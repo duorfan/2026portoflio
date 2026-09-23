@@ -17,6 +17,7 @@ const ROOT = __dirname;
 const CAPTURED = path.join(ROOT, 'captured');
 const SITE = path.join(ROOT, 'site');
 const PRIMARY_HOST = 'www.duorfan.com';
+const RESUME_URL = 'https://drive.google.com/file/d/1Ax6l5AJNz3l1TVYrJQ_XLUXoPjKziaYF/view?usp=sharing';
 const SITE_CUSTOM_DIR = path.join(ROOT, 'site-customizations');
 const LOCAL_ASSETS_DIR = path.join(SITE, '_assets', 'local');
 
@@ -671,7 +672,8 @@ const ABOUT_SNAPSHOT = `<section class="section-about-snapshot">
 
   console.log('[customize] injecting overrides + applying per-page patches ...');
   walkAndRewrite(SITE, ['.html'], (src, filePath) => {
-    let html = src;
+    // Keep the resume current even when rebuilding from the original capture.
+    let html = src.split('https://drive.google.com/file/d/1z1HeaOrPKD7Qw4MWvmg1FxMvouME4ZOt/view?usp=sharing').join(RESUME_URL);
     const rel = path.relative(SITE, filePath).split(path.sep).join('/');
     html = injectLocalAssets(html, rel);
     html = applyFooterAsk(html);
