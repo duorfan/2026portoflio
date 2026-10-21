@@ -137,9 +137,9 @@ function stripResponsiveAttrs(html) {
 function copyOverrideAssets() {
   fs.mkdirSync(LOCAL_ASSETS_DIR, { recursive: true });
   // Copy every file at the root of site-customizations/ into site/_assets/local/.
-  // Excludes files that have dedicated page-level handling (chat-itp.html). This makes the
+  // Excludes files that have dedicated page-level handling. This makes the
   // dir a drop-in spot for new media (images, videos, fonts) without touching build-site.js.
-  const SKIP = new Set(['chat-itp.html']);
+  const SKIP = new Set(['chat-itp.html', 'appear.html', 'depersonalization.html', 'printed-fate.html']);
   for (const entry of fs.readdirSync(SITE_CUSTOM_DIR, { withFileTypes: true })) {
     if (!entry.isFile()) continue;
     if (SKIP.has(entry.name)) continue;
@@ -157,6 +157,24 @@ function copyChatItpPage() {
   const dest = path.join(SITE, 'projects', 'chat-itp', 'index.html');
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.copyFileSync(src, dest);
+}
+
+function copyAppearPage() {
+  const src = path.join(SITE_CUSTOM_DIR, 'appear.html');
+  if (!fs.existsSync(src)) return;
+  const dest = path.join(SITE, 'projects', 'appear', 'index.html');
+  ensureDirFor(dest);
+  fs.copyFileSync(src, dest);
+}
+
+function copyCreativeProjectPages() {
+  for (const slug of ['depersonalization', 'printed-fate']) {
+    const src = path.join(SITE_CUSTOM_DIR, slug + '.html');
+    if (!fs.existsSync(src)) continue;
+    const dest = path.join(SITE, 'projects', slug, 'index.html');
+    ensureDirFor(dest);
+    fs.copyFileSync(src, dest);
+  }
 }
 
 // Inject <link> and <script> for local overrides into every page's <head>.
@@ -528,6 +546,13 @@ function splitMoreTagToChips(text) {
 }
 
 function applyMorePagePatches(html) {
+  // Creative projects now have native case studies; preserve the gallery cards and their styling.
+  html = html.replace(/<a\b[^>]*href="https:\/\/drive\.google\.com\/file\/d\/13qSrO_RgMMn3SSGXQ2OvbF70K8vkey03\/view[^"]*"[^>]*>/g,
+    tag => tag.replace(/href="[^"]*"/, 'href="/projects/appear"').replace(/\s+target="_blank"/g, ''));
+  html = html.replace(/<a\b[^>]*href="https:\/\/drive\.google\.com\/file\/d\/1tiqHe8bVeSU5SgTTMBFtR82kUlFz2xDI\/view[^"]*"[^>]*>/g,
+    tag => tag.replace(/href="[^"]*"/, 'href="/projects/depersonalization"').replace(/\s+target="_blank"/g, ''));
+  html = html.replace(/<a\b[^>]*href="https:\/\/www\.canva\.com\/design\/DAGDNMzy550\/[^\"]*"[^>]*>/g,
+    tag => tag.replace(/href="[^"]*"/, 'href="/projects/printed-fate"').replace(/\s+target="_blank"/g, ''));
   // Tag the cards section so the filter's section-empty machinery can hide its heading.
   html = html.replace(
     /<section\s+class="section-selected black-bg"(?![^>]*data-filterable-section)/,
@@ -670,6 +695,8 @@ const ABOUT_SNAPSHOT = `<section class="section-about-snapshot">
   console.log('[customize] copying override assets ...');
   copyOverrideAssets();
   copyChatItpPage();
+  copyAppearPage();
+  copyCreativeProjectPages();
 
   console.log('[customize] injecting overrides + applying per-page patches ...');
   walkAndRewrite(SITE, ['.html'], (src, filePath) => {

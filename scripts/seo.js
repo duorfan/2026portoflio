@@ -47,6 +47,21 @@ const PAGES = {
     title: 'Web Roots: Front-End Development | Duorfan Fan',
     description: 'Explore Duorfan Fan\'s early web development work, building interactive websites with HTML, CSS, JavaScript, and API integrations.',
   },
+  '/projects/appear': {
+    title: 'Appear: A Wearable Exploration of Touch | Duorfan Fan',
+    description: 'A wearable prototype by Duorfan Fan exploring touch across distance through heat-sensitive fabric, connected hardware, and garment design.',
+    image: '/_assets/local/appear-hero.webp',
+  },
+  '/projects/depersonalization': {
+    title: 'Depersonalization: An Audiovisual Performance | Duorfan Fan',
+    description: 'An audiovisual performance by Duorfan Fan exploring digital distraction through MUSE 2, TouchDesigner, p5.js, and DMX lighting.',
+    image: '/_assets/local/depersonalization-hero.webp',
+  },
+  '/projects/printed-fate': {
+    title: 'Printed Fate: AI, Ritual & Physical Interaction | Duorfan Fan',
+    description: 'An interactive installation by Duorfan Fan combining I Ching-inspired rituals, an AI conversation, digital fabrication, and a printed keepsake.',
+    image: '/_assets/local/printed-fate-hero.webp',
+  },
   '/projects/chat-itp': {
     title: 'ChatITP: AI Conversation Design | Duorfan Fan',
     description: 'ChatITP is an early conversational interface experiment by Duorfan Fan, exploring natural-language interactions and the OpenAI API.',
