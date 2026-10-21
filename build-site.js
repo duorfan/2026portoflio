@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
+const { applySeo, writeCrawlFiles } = require('./scripts/seo');
 
 const ROOT = __dirname;
 const CAPTURED = path.join(ROOT, 'captured');
@@ -687,8 +688,9 @@ const ABOUT_SNAPSHOT = `<section class="section-about-snapshot">
       const slug = '/projects/' + projectSlugMatch[1];
       html = rebuildOtherProjectsCarousel(html, slug);
     }
-    return html;
+    return applySeo(html, rel);
   });
+  writeCrawlFiles(SITE);
 
   console.log('Done. Local site at:', SITE);
 })();
