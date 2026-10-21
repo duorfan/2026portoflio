@@ -484,29 +484,17 @@ function removeContainerBuilderBlock(html, headingNeedle) {
 
 // ----- About page ----------------------------------------------------
 function applyAboutPatches(html) {
-  // 1) Self-description — update from "product designer" to the new hybrid identity.
-  html = html.replace(
-    'A product designer who still tears up at Minions',
-    'An AI product designer & builder who still tears up at Minions'
-  );
-
-  // 2) Duke is done — graduated, not studying. Restructures the sentence so the new role
-  //    can be tacked on naturally.
-  const oldEdu = 'I’m studying <a href="https://masters.pratt.duke.edu/design-technology-innovation/" target="_blank" class="link-6"><span class="text-span-18">Design &amp; Technology Innovation</span></a> at <strong>Duke</strong>, after earning my <strong>BFA</strong> in <a href="https://tisch.nyu.edu/itp" target="_blank" class="link-2"><span class="text-span-19">Interactive Media Arts</span></a> from <strong>NYU Tisch</strong> (with a minor in the Business of Entertainment, Media, and Technology).';
-  const newEdu = 'I just graduated with a Master’s in <a href="https://masters.pratt.duke.edu/design-technology-innovation/" target="_blank" class="link-6"><span class="text-span-18">Design &amp; Technology Innovation</span></a> from <strong>Duke</strong>, after earning my <strong>BFA</strong> in <a href="https://tisch.nyu.edu/itp" target="_blank" class="link-2"><span class="text-span-19">Interactive Media Arts</span></a> from <strong>NYU Tisch</strong> (with a minor in the Business of Entertainment, Media, and Technology). Next up: I’m joining <strong>Scale Social</strong> as a <strong>Product &amp; Tech Specialist</strong> — or, as I like to call it, an <strong>AI Product Designer &amp; Builder</strong>.';
-  if (html.includes(oldEdu)) html = html.replace(oldEdu, newEdu);
-
-  // 3) Dual-identity paragraph (replaces the old "tech companies and startups" line)
-  const oldBio = "I’ve worked with several <strong>tech companies</strong> and <strong>startups</strong>, designing digital and physical experiences that make technology feel more human.";
-  const newBio = 'I split my time between two modes: <strong>designing</strong> thoughtful product experiences across web, mobile, and physical interfaces — and <strong>building</strong> AI-powered products end-to-end, from research to shipped prototype. Recent builds include <strong>Mornova</strong> (an AI morning assistant), <strong>Scale Social</strong> (an AI UGC platform), and AI short films made in <strong>Runway</strong>.';
-  if (html.includes(oldBio)) html = html.replace(oldBio, newBio);
-
-  // 4) "How I work with AI" — replaces the old "exploring AI tools" line
-  const oldAi = "Lately, I’ve been exploring AI tools, from <strong>Runway</strong> (where I still have 90,000 credits left, oops) to <strong>Vibe Coding</strong>, trying to see how creative intuition meets machine logic.";
-  const newAi = '<strong>How I work with AI.</strong> AI is a tool, not the product. I use it to compress research, prototype faster, and ship features that would have taken a team. My builds favor calm UX and clear user value over flashy model demos.';
-  if (html.includes(oldAi)) html = html.replace(oldAi, newAi);
-
-  return html;
+  // Replace only the biography; retain the heading, photo, resume, and hobby section.
+  const biography = [
+    'An AI Product Designer &amp; Builder who still tears up at Minions and stays up way too late perfecting Figma layouts.',
+    'My journey started at <strong>NYU Tisch</strong> with <a href="https://tisch.nyu.edu/itp" target="_blank" class="link-2"><span class="text-span-19">Interactive Media Arts</span></a> and continued at <strong>Duke</strong>, where I studied <a href="https://masters.pratt.duke.edu/design-technology-innovation/" target="_blank" class="link-6"><span class="text-span-18">Design &amp; Technology Innovation</span></a>. Somewhere along the way, I realized I love not just designing experiences, but actually bringing them to life.',
+    'Currently, I’m a <strong>Product &amp; Tech Specialist</strong> at <strong>Scale Social</strong>, combining design, product thinking, and AI to turn creative ideas into real products. Outside of work, I’m always experimenting with new tools, emerging technologies, and personal projects.',
+    'I believe great design starts with empathy. Maybe that’s my superpower, even if it means crying over a cartoon banana. 💛',
+    'Always happy to connect, exchange ideas, or build something fun together! Open to collaborations via <a href="https://mail.google.com/mail/u/0/?fs=1&amp;tf=cm&amp;source=mailto&amp;to=duorfan@gmail.com" target="_blank" class="link-3">Email</a> or <a href="https://www.linkedin.com/in/ningyu-fan-242915222/" target="_blank" class="link-4">LinkedIn</a>!'
+  ].join('<br><br>');
+  const biographyPattern = /(<p\b[^>]*data-w-id="de6ef323-21c3-4606-6e55-b91b06292fcf"[^>]*>)[\s\S]*?(<\/p>)/;
+  if (!biographyPattern.test(html)) throw new Error('About biography paragraph not found');
+  return html.replace(biographyPattern, (_, open, close) => open + biography + close);
 }
 
 // ----- Mornova page --------------------------------------------------
