@@ -84,48 +84,60 @@
 
 /* Belt-and-suspenders: never let any element create horizontal overflow.
    Webflow's `.w-container` has min-width baked in that overflows narrow viewports;
-   clamping body's overflow-x and the navbar's max-width both stops the runaway. */
-html, body { overflow-x: hidden; }
+   clamping body's overflow-x and the navbar's max-width both stops the runaway.
+   CRITICAL: use `clip`, NOT `hidden`. `overflow-x: hidden` forces overflow-y to
+   compute as `auto`, which turns <body> into a scroll container — that silently
+   breaks `position: sticky` on the filter bar (it scrolls away instead of pinning).
+   `clip` clips the same horizontal overflow WITHOUT establishing a scroll container,
+   so overflow-y stays `visible` and sticky works against the viewport. */
+html, body { overflow-x: clip; }
 .navbar-2,
 .nav-container.w-container,
 .w-nav-overlay {
   max-width: 100vw;
 }
 
-/* ---------- 3b. Navbar visibility while filter is pinned ---------------
+/* ---------- 3b. Navbar visibility (headroom) ---------------------------
    The Webflow navbar ships transparent (background: #0000), which makes
-   content (cards, filter chips) bleed through. On desktop Webflow IX2
-   already slides it -70px on scroll; mobile doesn't get that behavior.
-   To get consistent UX across viewports: when the user is in the project
-   area (filter bar pinned to the top), fade the navbar out completely so
-   the filter bar owns the top strip cleanly. As soon as the user scrolls
-   back up past the filter bar, the navbar reappears for global nav. */
+   content (cards, filter chips) bleed through. Webflow's IX2 runtime also
+   binds a scroll animation to the navbar that eases its inline transform +
+   opacity by scroll *position* (with smoothing) and is NOT direction-aware —
+   so once you've scrolled down, scrolling back up does NOT reliably bring the
+   navbar back. That's the "navbar won't show on scroll-up" bug.
+
+   Fix: take full ownership of the navbar's transform + opacity with
+   `!important` (an !important author rule beats IX2's inline styles, so its
+   per-frame churn is ignored visually) and drive visibility ourselves with a
+   direction-aware `body.nav-hidden` class set in local-overrides.js. The bar
+   tucks away while scrolling down through content and snaps back the instant
+   the user scrolls up, so global nav is always one gesture away. */
 .navbar-2 {
-  transition: opacity .22s ease, background-color .25s ease, box-shadow .25s ease;
+  transform: translate3d(0, 0, 0) !important;
+  opacity: 1 !important;
+  transition: transform .3s cubic-bezier(.2, .8, .2, 1), opacity .25s ease,
+              background-color .25s ease, box-shadow .25s ease;
 }
-body.filter-pinned .navbar-2 {
-  opacity: 0;
-  pointer-events: none;
-}
-/* When the user is past the hero but the filter isn't yet pinned (brief
-   window), give the navbar a solid fill so cards don't bleed through.
-   Fully opaque — translucent + blur still let bold headings ghost through. */
-body.nav-solid:not(.filter-pinned) .navbar-2 {
+/* Solid fill once the user scrolls off the hero so content doesn't bleed
+   through. Fully opaque — translucent + blur still let bold headings ghost. */
+body.nav-solid .navbar-2 {
   background-color: var(--beige) !important;
   box-shadow: 0 1px 0 rgba(153, 136, 122, 0.18);
 }
-/* On mobile the navbar stays visible even when filter "pin" event fires
-   (we cancel the fade for mobile elsewhere), so it also needs the solid fill. */
-@media (max-width: 768px) {
-  body.nav-solid .navbar-2 {
-    background-color: var(--beige) !important;
-    box-shadow: 0 1px 0 rgba(153, 136, 122, 0.18);
-  }
+/* Headroom hidden state — slide fully out of view and disable interaction. */
+body.nav-hidden .navbar-2 {
+  transform: translate3d(0, -100%, 0) !important;
+  opacity: 0 !important;
+  pointer-events: none;
 }
 
-/* ---------- 4. Filter bar (sticky on scroll) ------------------------- */
+/* ---------- 4. Filter bar (sticky on scroll) -------------------------
+   Pins just below the navbar (top: --navh) so the two never overlap. When the
+   navbar tucks away on scroll-down (body.nav-hidden), the filter rises to the
+   very top in the same motion, so they move as a single header unit.
+   --navh is published from JS (real measured navbar height); the literal is a
+   pre-JS fallback. */
 .filter-bar {
-  position: sticky; top: 0; z-index: 50;
+  position: sticky; top: var(--navh, 68px); z-index: 50;
   background: rgba(250, 244, 238, 0.94);
   border-bottom: 1px solid rgba(153, 136, 122, 0.18);
   padding: 12px 32px;
@@ -133,8 +145,9 @@ body.nav-solid:not(.filter-pinned) .navbar-2 {
   justify-content: center; align-items: center;
   backdrop-filter: saturate(140%) blur(8px);
   -webkit-backdrop-filter: saturate(140%) blur(8px);
-  transition: box-shadow .2s ease, transform .25s ease;
+  transition: box-shadow .2s ease, top .3s cubic-bezier(.2, .8, .2, 1);
 }
+body.nav-hidden .filter-bar { top: 0; }
 /* Inline variant — used on the More projects gallery. Sits in document flow
    (no sticky), no backdrop blur, left-aligned to match section heading. */
 .filter-bar.filter-bar--inline {
@@ -193,8 +206,6 @@ body.filter-pinned .filter-bar {
      sheet (see .filter-fab / .filter-sheet rules below). Hiding the bar avoids any
      scroll conflict with the fixed navbar and gives the chips a thumb-reachable home. */
   .filter-bar { display: none !important; }
-  /* No pin-swap to do on mobile (no sticky bar), so keep navbar visible always. */
-  body.filter-pinned .navbar-2 { opacity: 1 !important; pointer-events: auto !important; }
   .filter-bar::-webkit-scrollbar { display: none; }
   .filter-bar .filter-label { display: none; }
   .filter-chip {
@@ -519,6 +530,7 @@ body.is-empty-filter .filter-empty-state { display: block; }
    Symmetric desktop/tablet padding (original Webflow-ish proportions).
    Mobile gets asymmetric tweaks in the @media block at the bottom of this file. */
 :root {
+  --navh: 68px;  /* navbar height; overwritten with the real measured value from JS */
   --section-pad-y: clamp(56px, 8vw, 96px);
   --section-pad-x: clamp(20px, 5vw, 48px);
   --bg-ai-builds:  #f3e9d8;   /* warm cream — feels like a workshop bench */

@@ -1,0 +1,169 @@
+/* Current Scale Social work; all rules are local to this overview. */
+.ss-overview {
+  --ss-overview-ink: var(--dark-brown, #49433e);
+  --ss-overview-muted: var(--light-brown, #75685b);
+  --ss-overview-rule: rgba(73, 67, 62, .22);
+  padding: 0 clamp(20px, 5vw, 60px) 40px;
+  color: var(--ss-overview-ink);
+  font-family: Montserrat, Arial, sans-serif;
+}
+
+.ss-overview .ss-overview-inner {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.ss-overview .ss-overview-heading {
+  max-width: 850px;
+}
+
+.ss-overview .ss-overview-eyebrow,
+.ss-overview .ss-overview-meta dt,
+.ss-overview .ss-overview-number {
+  margin: 0;
+  color: var(--ss-overview-muted);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.ss-overview .ss-overview-heading h2 {
+  margin: 16px 0 18px;
+  color: inherit;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: clamp(31px, 3.4vw, 43px);
+  font-weight: 400;
+  line-height: 1.16;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+
+.ss-overview .ss-overview-intro {
+  max-width: 71ch;
+  margin: 0;
+  color: var(--ss-overview-ink);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.ss-overview .ss-overview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 44px;
+  margin: 26px 0 34px;
+}
+
+.ss-overview .ss-overview-meta dd {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.ss-overview .ss-overview-chapters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 34px;
+}
+
+.ss-overview .ss-overview-chapter {
+  min-width: 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--ss-overview-rule);
+}
+
+.ss-overview .ss-overview-chapter h3 {
+  max-width: 24ch;
+  margin: 12px 0;
+  color: inherit;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: 23px;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -.015em;
+  text-wrap: balance;
+}
+
+.ss-overview .ss-overview-chapter p,
+.ss-overview .ss-overview-supporting,
+.ss-overview .ss-overview-research p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+.ss-overview .ss-overview-supporting {
+  max-width: 100ch;
+  margin-top: 28px;
+  color: var(--ss-overview-muted);
+}
+
+.ss-overview .ss-overview-supporting > span {
+  color: var(--ss-overview-ink);
+  font-weight: 600;
+}
+
+.ss-overview .ss-overview-research {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px 40px;
+  margin-top: 46px;
+  padding-top: 30px;
+  border-top: 1px solid var(--ss-overview-rule);
+}
+
+.ss-overview .ss-overview-research h2 {
+  max-width: 38ch;
+  margin: 0 0 10px;
+  color: inherit;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: clamp(23px, 2.3vw, 28px);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -.015em;
+}
+
+.ss-overview .ss-overview-research p {
+  max-width: 72ch;
+  color: var(--ss-overview-muted);
+}
+
+.ss-overview .ss-overview-research-link {
+  flex: 0 0 auto;
+  padding: 10px 0;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.ss-overview .ss-overview-research-link span { margin-left: 8px; }
+.ss-overview .ss-overview-research-link:hover { text-decoration-thickness: 2px; }
+.ss-overview .ss-overview-research-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 6px;
+}
+
+@media (max-width: 800px) {
+  .ss-overview .ss-overview-chapters { grid-template-columns: 1fr; gap: 24px; }
+  .ss-overview .ss-overview-chapter h3 { max-width: none; }
+  .ss-overview .ss-overview-chapter p { max-width: 75ch; }
+  .ss-overview .ss-overview-research { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .ss-overview .ss-overview-research-link { padding-block: 12px; }
+}
+
+@media (max-width: 480px) {
+  .ss-overview { padding-bottom: 28px; }
+  .ss-overview .ss-overview-title-break { display: none; }
+  .ss-overview .ss-overview-eyebrow { font-size: 9px; letter-spacing: .08em; }
+  .ss-overview .ss-overview-meta { gap: 16px 28px; }
+  .ss-overview .ss-overview-research { margin-top: 34px; }
+}
+
+#scale-research { scroll-margin-top: calc(var(--navh, 72px) + 24px); }

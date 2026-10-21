@@ -1,0 +1,7 @@
+/* Opt in only after the observer is ready. No script means fully visible content. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-portfolio-state="pending"] { opacity: 0; }
+}
+@media print {
+  [data-portfolio-state] { opacity: 1 !important; transform: none !important; }
+}

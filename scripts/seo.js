@@ -13,6 +13,8 @@ const PAGES = {
     description: 'Meet Duorfan (Ningyu) Fan, an AI product designer and builder with degrees from Duke and NYU Tisch, creating thoughtful digital and physical experiences.',
   },
   '/more-projects-gallery': {
+    noindex: true,
+    canonical: '/#more-work',
     title: 'Creative Technology & Experiments | Duorfan Fan',
     description: 'Explore creative experiments by Duorfan Fan across AI films, games, physical computing, interactive art, graphic design, and creative technology.',
   },
@@ -23,7 +25,7 @@ const PAGES = {
   },
   '/scalesocial': {
     title: 'Scale Social: AI UGC Platform | Duorfan Fan',
-    description: 'UX research and product design by Duorfan Fan for an AI UGC platform, exploring how automation can support authentic brand content. Access on request.',
+    description: 'Product design for Scale Studio V2 by Duorfan Fan: client-portal workflows, the Aurora design system, analytics, and engineering handoff. Access on request.',
     // This case study already asks visitors to request access; keep it out of search.
     noindex: true,
   },
@@ -44,6 +46,7 @@ const PAGES = {
     description: 'Web design and front-end development by Duorfan Fan for Capybara.AI, translating an AI-driven fintech product into a clear and engaging web experience.',
   },
   '/projects/self-coded-website': {
+    noindex: true,
     title: 'Web Roots: Front-End Development | Duorfan Fan',
     description: 'Explore Duorfan Fan\'s early web development work, building interactive websites with HTML, CSS, JavaScript, and API integrations.',
   },
@@ -63,6 +66,7 @@ const PAGES = {
     image: '/_assets/local/printed-fate-hero.webp',
   },
   '/projects/chat-itp': {
+    noindex: true,
     title: 'ChatITP: AI Conversation Design | Duorfan Fan',
     description: 'ChatITP is an early conversational interface experiment by Duorfan Fan, exploring natural-language interactions and the OpenAI API.',
   },
@@ -82,7 +86,7 @@ function applySeo(html, rel) {
   const route = rel === 'index.html' ? '/' : '/' + rel.replace(/\/index\.html$/, '');
   const page = PAGES[route];
   if (!page) throw new Error(`Missing SEO configuration: ${rel}`);
-  const url = ORIGIN + route;
+  const url = ORIGIN + (page.canonical || route);
   return html.replace(/<head\b[^>]*>[\s\S]*?<\/head>/i, head => {
     // Retain each case study's original preview image, but make its URL absolute.
     let image = page.image;

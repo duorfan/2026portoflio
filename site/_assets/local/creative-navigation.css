@@ -1,0 +1,35 @@
+/* The canonical Webflow navbar is shared at build time. These rules provide
+   native menu behavior on creative pages without changing the site's navbar. */
+.creative-case-study #main{padding-top:var(--cc-nav-height,68px)}
+.creative-case-study .cc-shared-navigation .summary-info.menu-wider{font-family:CCMontserrat,Montserrat,Arial,sans-serif}
+.creative-case-study .cc-native-nav-toggle{border:0;border-radius:0;font:inherit;color:inherit;line-height:1}
+.creative-case-study .cc-nav-icon{display:block;position:relative;width:37px;height:37px;margin:0;transform:none;mix-blend-mode:normal;transition:transform .25s ease}
+.creative-case-study .cc-nav-icon::before,.creative-case-study .cc-nav-icon::after{content:"";position:absolute;left:6px;top:18px;width:25px;height:1px;background:currentColor}
+.creative-case-study .cc-nav-icon::after{transform:rotate(90deg)}
+.creative-case-study .cc-native-nav-toggle[aria-expanded="true"] .cc-nav-icon{transform:rotate(45deg)}
+.creative-case-study .cc-native-nav-toggle:focus-visible{outline:3px solid var(--cc-accent);outline-offset:-5px}
+.creative-case-study.cc-native-nav-hidden .navbar-2.cc-shared-navigation:is(.cc-nav-open,:focus-within){transform:translate3d(0,0,0)!important;opacity:1!important;pointer-events:auto}
+.creative-case-study .cc-index{top:var(--cc-nav-height,68px);transition:top .3s cubic-bezier(.2,.8,.2,1)}
+.creative-case-study.cc-native-nav-hidden:not(.cc-nav-open):not(.cc-nav-focused) .cc-index{top:0}
+.creative-case-study :is(.cc-section,.cc-system){scroll-margin-top:calc(var(--cc-nav-height,68px) + 76px)}
+@media(max-width:767px){
+  .creative-case-study .cc-shared-navigation .cc-native-nav-toggle{display:none;color:#faf4ee}
+  .creative-case-study .cc-shared-navigation:not(.cc-nav-ready){position:relative}
+  .creative-case-study:not(.cc-nav-enhanced) #main{padding-top:0}
+  .creative-case-study .cc-shared-navigation:not(.cc-nav-ready) .nav-menu-2{display:flex!important;position:static;float:none;clear:both;flex-wrap:wrap;justify-content:flex-end;padding:8px 20px}
+  .creative-case-study .cc-shared-navigation:not(.cc-nav-ready) .w-nav-link{padding:12px}
+  .creative-case-study .cc-shared-navigation.cc-nav-ready .cc-native-nav-toggle{display:block}
+  .creative-case-study .cc-shared-navigation.cc-nav-ready .nav-menu-2{display:none;position:absolute;top:100%;left:0;right:0;float:none;max-height:calc(100dvh - var(--cc-nav-height,68px));overflow-y:auto;overscroll-behavior:contain}
+  .creative-case-study .cc-shared-navigation.cc-nav-open .nav-menu-2{display:block}
+  .creative-case-study .cc-shared-navigation.cc-nav-open .w-nav-link{display:block}
+}
+@media(max-width:479px){.creative-case-study .cc-shared-navigation .cc-native-nav-toggle{color:#49433e}}
+@media(prefers-reduced-motion:reduce){.creative-case-study .cc-index,.creative-case-study .cc-nav-icon{transition:none}}
+
+/* Keep this component independent of uncommitted global navigation overrides. */
+html.creative-project-page,html.creative-project-page body{overflow-x:clip}
+.creative-case-study .navbar-2.cc-shared-navigation{transform:translate3d(0,0,0)!important;opacity:1!important;pointer-events:auto;transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .25s ease,background-color .25s ease,box-shadow .25s ease}
+.creative-case-study.cc-native-nav-hidden:not(.cc-nav-open):not(.cc-nav-focused) .navbar-2.cc-shared-navigation{transform:translate3d(0,-100%,0)!important;opacity:0!important;pointer-events:none}
+@media(min-width:480px) and (max-width:767px){.creative-case-study .cc-shared-navigation :is(a,button):focus-visible{outline-color:#faf4ee}.creative-case-study .cc-shared-navigation .brand-2:focus-visible{outline-color:#49433e}}
+@media(prefers-reduced-motion:no-preference){html.creative-project-page{scroll-behavior:smooth}}
+@media(prefers-reduced-motion:reduce){.creative-case-study .navbar-2.cc-shared-navigation{transition:none}}

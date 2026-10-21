@@ -74,6 +74,12 @@
   const IS_MORE_PAGE = /\/more-projects-gallery(\/|$)/.test(location.pathname);
   const FILTER_DEFS = IS_MORE_PAGE ? FILTER_DEFS_MORE : FILTER_DEFS_LANDING;
 
+  // Timestamp (ms) until which the headroom nav-hide toggle is frozen. Set when a
+  // filter click kicks off a programmatic "jump to results" smooth-scroll, so the
+  // navbar doesn't slide in/out mid-flight and shift where the section lands.
+  // Shared between applyFilter → scrollToFilterResults and initScrollUI's update().
+  let headroomLockUntil = 0;
+
   function initFilterBar() {
     // Only mount on pages that have a filter target.
     const hasProjects = document.querySelector('[data-tags]');
@@ -154,7 +160,12 @@
   //     or scrolling jankily.
   // ------------------------------------------------------------------
   function initFilterFab() {
-    if (!window.matchMedia('(max-width: 768px)').matches) return;
+    // NOTE: do NOT gate creation on matchMedia('(max-width: 768px)'). Doing so
+    // built the FAB only if the viewport was already narrow at boot — so loading
+    // in landscape (or any width > 768) then rotating/resizing to a narrow
+    // viewport left NO filter at all (the static bar is display:none on mobile
+    // and the FAB never existed). We always build it and let the CSS media query
+    // own visibility, so the filter is reachable at every size.
     if (!document.querySelector('[data-tags]')) return;
     if (document.querySelector('.filter-fab')) return;
     // On the More gallery the filter is inline below the page header — no FAB.
@@ -306,6 +317,57 @@
       const newHash = id ? ('#filter=' + id) : '';
       if (newHash !== location.hash) history.replaceState(null, '', location.pathname + location.search + newHash);
     }
+    // On a deliberate filter pick (desktop chip or mobile sheet — both pass
+    // writeHash=true), bring the first matching section into view. Filtering
+    // reflows the page, which otherwise strands the user's scroll position and
+    // leaves the matches off-screen ("the filter did nothing"). Skip for "All"
+    // (id empty — just clearing, keep their place) and on the More gallery
+    // (single in-place grid, no section reflow to chase).
+    if (writeHash && id && !IS_MORE_PAGE) scrollToFilterResults();
+  }
+
+  // Smooth-scroll so the first matching filterable section docks just below the
+  // sticky header (navbar + filter bar). Falls back to the empty-state card when
+  // the filter matched nothing, so its message + "try the More gallery" link land
+  // in view. Freezes the headroom nav toggle for the flight (see headroomLockUntil)
+  // and pins the nav to whatever state we sized the landing against, so the bar
+  // can't slide and tuck the section underneath.
+  function scrollToFilterResults() {
+    let target = null;
+    for (const s of document.querySelectorAll('[data-filterable-section]')) {
+      if (s.classList.contains('section-empty')) continue;
+      if (getComputedStyle(s).display === 'none') continue;
+      target = s;
+      break;
+    }
+    if (!target && document.body.classList.contains('is-empty-filter')) {
+      target = document.querySelector('.filter-empty-state');
+    }
+    if (!target) return;
+
+    const nav = document.querySelector('.navbar-2');
+    const filterBar = document.querySelector('.filter-bar');
+    const navh = nav ? Math.round(nav.getBoundingClientRect().height) : 0;
+    const filterShown = filterBar && getComputedStyle(filterBar).display !== 'none';
+    const filterH = filterShown ? Math.round(filterBar.getBoundingClientRect().height) : 0;
+    const GAP = 12; // breathing room below the sticky header
+
+    // Navbar + filter bar are out of flow (fixed/sticky), so the section's
+    // absolute top is stable regardless of nav visibility.
+    const sectionTop = target.getBoundingClientRect().top + window.scrollY;
+    let navShown = !document.body.classList.contains('nav-hidden');
+    let dest = Math.max(0, Math.round(sectionTop - (navShown ? navh : 0) - filterH - GAP));
+    // If we'd settle near the very top, the headroom rule forces the nav visible
+    // there — recompute counting it so the section isn't tucked underneath.
+    if (dest < 120 && !navShown) {
+      navShown = true;
+      dest = Math.max(0, Math.round(sectionTop - navh - filterH - GAP));
+    }
+    if (Math.abs(dest - window.scrollY) < 4) return; // already framed
+
+    document.body.classList.toggle('nav-hidden', !navShown); // pin the sized state
+    headroomLockUntil = Date.now() + 1600;
+    window.scrollTo({ top: dest, behavior: 'smooth' });
   }
 
   // ------------------------------------------------------------------
@@ -390,15 +452,30 @@
   }
 
   // Scroll-driven UI affordances:
-  //   1. `body.nav-solid` — turns the transparent Webflow navbar into a translucent
-  //      blurred fill once the user is past the hero, so cards / filter chips don't
-  //      bleed through the top strip as they scroll.
-  //   2. `body.filter-pinned` — true when the .filter-bar has reached its sticky
+  //   1. `body.nav-solid` — turns the transparent Webflow navbar into a solid fill
+  //      once the user is past the hero, so cards / filter chips don't bleed through.
+  //   2. `body.nav-hidden` — headroom: tuck the navbar away while scrolling DOWN
+  //      through content, reveal it the instant the user scrolls UP. We own the
+  //      navbar's transform/opacity (via !important in CSS) to defeat Webflow IX2,
+  //      whose scroll animation is position-based (not direction-aware) and would
+  //      otherwise leave the navbar stuck off-screen on scroll-up.
+  //   3. `body.filter-pinned` — true when the .filter-bar has reached its sticky
   //      position. Used to add a subtle shadow under it (so it lifts from content).
+  //   Also publishes the real navbar height as `--navh` so the sticky filter bar
+  //   pins exactly beneath the navbar.
   function initScrollUI() {
+    const nav = document.querySelector('.navbar-2');
     const filterBar = document.querySelector('.filter-bar');
+
+    function measureNav() {
+      if (!nav) return;
+      const h = Math.round(nav.getBoundingClientRect().height);
+      if (h) document.documentElement.style.setProperty('--navh', h + 'px');
+    }
+
     let filterNaturalTop = null;
     function measure() {
+      measureNav();
       if (!filterBar) return;
       // Read the bar's offset from the document top while it's NOT pinned.
       const wasPinned = document.body.classList.contains('filter-pinned');
@@ -410,23 +487,44 @@
     measure();
     window.addEventListener('resize', measure, { passive: true });
 
+    let lastY = window.scrollY;
     let ticking = false;
+    function update() {
+      const y = window.scrollY;
+      document.body.classList.toggle('nav-solid', y > 80);
+
+      // Headroom: always show the navbar near the top (over the hero); below
+      // that, hide on scroll-down and reveal on scroll-up. The small delta gate
+      // keeps sub-pixel scroll jitter from flickering the bar. Suppressed while a
+      // filter "jump to results" scroll is in flight so the nav doesn't flip
+      // direction-by-direction and shift where the section lands.
+      if (Date.now() >= headroomLockUntil) {
+        const delta = y - lastY;
+        if (y < 120) {
+          document.body.classList.remove('nav-hidden');
+        } else if (Math.abs(delta) > 6) {
+          document.body.classList.toggle('nav-hidden', delta > 0);
+        }
+      }
+
+      if (filterBar && filterNaturalTop != null) {
+        const stickyTop = parseFloat(getComputedStyle(filterBar).top) || 0;
+        document.body.classList.toggle('filter-pinned', y + stickyTop >= filterNaturalTop);
+      }
+      lastY = y;
+      ticking = false;
+    }
     function onScroll() {
       if (ticking) return;
       ticking = true;
-      requestAnimationFrame(() => {
-        const y = window.scrollY;
-        document.body.classList.toggle('nav-solid', y > 80);
-        if (filterBar && filterNaturalTop != null) {
-          // Account for the filter bar's `top:` offset on mobile (68px) vs desktop (0).
-          const stickyTop = parseFloat(getComputedStyle(filterBar).top) || 0;
-          document.body.classList.toggle('filter-pinned', y + stickyTop >= filterNaturalTop);
-        }
-        ticking = false;
-      });
+      requestAnimationFrame(update);
     }
     window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
+    // Release the headroom freeze the instant a programmatic jump finishes, so the
+    // user's very next gesture controls the navbar again. The timeout baked into
+    // headroomLockUntil is the fallback for browsers without scrollend.
+    window.addEventListener('scrollend', () => { headroomLockUntil = 0; }, { passive: true });
+    update();
   }
 
   if (document.readyState === 'loading') {

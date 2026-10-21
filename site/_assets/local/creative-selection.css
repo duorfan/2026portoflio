@@ -1,0 +1,187 @@
+/* A compact companion to the landing page's selected design work. */
+.creative-selection {
+  margin: 0;
+  padding: 0 var(--section-pad-x, clamp(20px, 5vw, 48px)) clamp(48px, 6vw, 72px);
+  background: var(--beige, #faf4ee);
+  color: var(--dark-brown, #49433e);
+  scroll-margin-top: calc(var(--navh, 68px) + 24px);
+}
+
+.creative-selection-inner {
+  padding-top: clamp(30px, 4vw, 46px);
+  border-top: 1px solid rgba(73, 67, 62, .2);
+}
+
+.creative-selection-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 27px;
+}
+
+.creative-selection-eyebrow,
+.creative-selection-kind {
+  margin: 0;
+  font-family: Montserrat, sans-serif;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.creative-selection-eyebrow {
+  margin-bottom: 9px;
+  color: var(--light-brown, #75685b);
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: .14em;
+}
+
+.creative-selection-heading h2 {
+  margin: 0;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: clamp(29px, 3vw, 34px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+  color: inherit;
+}
+
+.creative-selection-intro {
+  margin: 10px 0 0;
+  color: var(--light-brown, #75685b);
+  font-family: Montserrat, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.creative-selection-more {
+  flex-shrink: 0;
+  padding: 8px 0;
+  color: inherit;
+  font-family: Montserrat, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-decoration: none;
+  text-underline-offset: 5px;
+}
+
+.creative-selection-more span { margin-left: 7px; }
+.creative-selection-more:hover { text-decoration: underline; }
+
+.creative-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+/* Retain collection-item so the existing portfolio filters control each card. */
+.creative-selection .creative-selection-card {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.creative-selection-link {
+  display: block;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.creative-selection-image {
+  overflow: hidden;
+  aspect-ratio: 3 / 2;
+  border-radius: 8px;
+  background: #e7dfd7;
+}
+
+.creative-selection-image img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .45s cubic-bezier(.2, .7, .2, 1);
+}
+
+.creative-selection-image-appear img { object-position: 50% 43%; }
+.creative-selection-image-depersonalization { background: #08090c; }
+.creative-selection-image-depersonalization img { object-fit: contain; object-position: 50% 50%; }
+
+.creative-selection-copy { padding-top: 17px; }
+
+.creative-selection-kind {
+  color: var(--light-brown, #75685b);
+  font-size: 9px;
+  line-height: 1.6;
+  letter-spacing: .08em;
+}
+
+.creative-selection-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.creative-selection-title-row h3 {
+  min-width: 0;
+  margin: 0;
+  color: inherit;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: clamp(21px, 2.35vw, 26px);
+  font-weight: 400;
+  line-height: 1.22;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+  text-underline-offset: 5px;
+  text-decoration-thickness: 1px;
+}
+
+.creative-selection-arrow {
+  margin-left: auto;
+  color: var(--light-brown, #75685b);
+  font-family: Montserrat, sans-serif;
+  font-size: 17px;
+  line-height: 1;
+  transition: transform .25s ease;
+}
+
+.creative-selection-description {
+  margin: 10px 0 0;
+  color: var(--light-brown, #75685b);
+  font-family: Montserrat, sans-serif;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.creative-selection-link:hover h3 { text-decoration: underline; }
+.creative-selection-link:hover .creative-selection-arrow { transform: translate(2px, -2px); }
+
+.creative-selection-link:focus-visible,
+.creative-selection-more:focus-visible {
+  outline: 2px solid var(--dark-brown, #49433e);
+  outline-offset: 6px;
+}
+
+@media (hover: hover) {
+  .creative-selection-link:hover .creative-selection-image img { transform: scale(1.025); }
+}
+
+@media (max-width: 700px) {
+  .creative-selection-grid { grid-template-columns: 1fr; gap: 32px; }
+  .creative-selection-heading { align-items: flex-start; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .creative-selection-more { padding: 4px 0; }
+  .creative-selection-title-row h3 { font-size: 26px; }
+  .creative-selection-kind { font-size: 10px; }
+  .creative-selection-description { max-width: 44ch; font-size: 13px; line-height: 1.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .creative-selection-image img,
+  .creative-selection-arrow { transition: none; }
+  .creative-selection-link:hover .creative-selection-image img,
+  .creative-selection-link:hover .creative-selection-arrow { transform: none; }
+}

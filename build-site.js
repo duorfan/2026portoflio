@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 const { applySeo, writeCrawlFiles } = require('./scripts/seo');
+const { renderMoreWork } = require('./scripts/more-work');
 
 const ROOT = __dirname;
 const CAPTURED = path.join(ROOT, 'captured');
@@ -139,7 +140,7 @@ function copyOverrideAssets() {
   // Copy every file at the root of site-customizations/ into site/_assets/local/.
   // Excludes files that have dedicated page-level handling. This makes the
   // dir a drop-in spot for new media (images, videos, fonts) without touching build-site.js.
-  const SKIP = new Set(['chat-itp.html', 'appear.html', 'depersonalization.html', 'printed-fate.html']);
+  const SKIP = new Set(['chat-itp.html', 'appear.html', 'depersonalization.html', 'printed-fate.html', 'creative-selection.html', 'selected-work.html', 'scale-social-overview.html']);
   for (const entry of fs.readdirSync(SITE_CUSTOM_DIR, { withFileTypes: true })) {
     if (!entry.isFile()) continue;
     if (SKIP.has(entry.name)) continue;
@@ -177,6 +178,56 @@ function copyCreativeProjectPages() {
   }
 }
 
+// Reuse the canonical home navbar after its asset URLs have been rewritten.
+// Strip captured runtime state and provide native controls for creative pages.
+function extractSharedCreativeNavigation(html) {
+  const start = /<div\b[^>]*class="[^"]*\bnavbar-2\b[^"]*"[^>]*>/.exec(html);
+  if (!start) throw new Error('Canonical home navbar was not found.');
+  const divs = /<\/?div\b[^>]*>/g;
+  divs.lastIndex = start.index;
+  let depth = 0;
+  let end = -1;
+  let match;
+  while ((match = divs.exec(html))) {
+    depth += match[0].startsWith('</') ? -1 : 1;
+    if (depth === 0) { end = divs.lastIndex; break; }
+  }
+  if (end < 0) throw new Error('Canonical home navbar is unbalanced.');
+  let nav = html.slice(start.index, end)
+    .replace(/<div\b[^>]*class="w-nav-overlay"[^>]*>[\s\S]*?<\/div>/g, '')
+    .replace(/\s+(?:style|data-w-id|aria-current)="[^"]*"/g, '')
+    .replace(/\bw--current\b/g, '')
+    .replace(/loading="lazy"/g, 'loading="eager"')
+    .replace(/class="([^"]*\bnavbar-2\b[^"]*)"/, (_m, classes) => `class="${classes.trim()} cc-shared-navigation"`)
+    .replace(/<nav\b([^>]*class="[^"]*\bnav-menu-2\b[^"]*"[^>]*)>/,
+      (_m, attrs) => `<nav${attrs.replace(/\s+(?:id|aria-label)="[^"]*"/g, '')} id="creative-navigation-menu" aria-label="Main navigation">`);
+  let replacedButton = false;
+  nav = nav.replace(/<div\b([^>]*class="[^"]*\bw-nav-button\b[^"]*"[^>]*)>[\s\S]*?<\/div>/, (_m, attrs) => {
+    replacedButton = true;
+    const classes = /class="([^"]*)"/.exec(attrs)[1];
+    return `<button type="button" class="${classes} cc-native-nav-toggle" aria-label="Open menu" aria-controls="creative-navigation-menu" aria-expanded="false"><span class="image-12 cc-nav-icon" aria-hidden="true"></span></button>`;
+  });
+  if (!replacedButton) throw new Error('Canonical home navbar has no mobile control.');
+  return nav.replace(/<a\b[^>]*>[\s\S]*?<\/a>/g, link => {
+    if (link.includes('href="/more-projects-gallery"')) link = link.replace('<a ', '<a aria-current="location" ');
+    if (link.replace(/<[^>]+>/g, '').trim() === 'Resume') {
+      link = link.replace(/href="[^"]*"/, `href="${RESUME_URL}"`);
+      if (!/\brel=/.test(link)) link = link.replace('<a ', '<a rel="noopener" ');
+    }
+    return link;
+  });
+}
+
+function injectSharedCreativeNavigation(html, rel, navbar) {
+  if (!/^projects\/(?:appear|depersonalization|printed-fate)\/index\.html$/.test(rel)) return html;
+  const block = `<!-- shared-creative-navigation:start -->\n${navbar}\n<!-- shared-creative-navigation:end -->`;
+  if (html.includes('<!-- shared-creative-navigation -->')) return html.replace('<!-- shared-creative-navigation -->', block);
+  if (html.includes('<!-- shared-creative-navigation:start -->')) {
+    return html.replace(/<!-- shared-creative-navigation:start -->[\s\S]*?<!-- shared-creative-navigation:end -->/, block);
+  }
+  throw new Error(`Missing shared navigation placeholder: ${rel}`);
+}
+
 // Inject <link> and <script> for local overrides into every page's <head>.
 // Also strips the inline <style> and <script> blocks the captured home page
 // shipped, since their contents now live in local-overrides.{css,js}.
@@ -190,6 +241,26 @@ function injectLocalAssets(html, rel) {
   // carries — their content is now in the overrides files. Strip from </body> backwards.
   if (rel === 'index.html') {
     html = html.replace(/<style>\s*\.name-wrapper[\s\S]*?<\/script>\s*<\/body>/, '</body>');
+  }
+  return html;
+}
+
+// One motion vocabulary for the homepage selection and its case studies.
+const MOTION_CASE_STUDIES = new Set([
+  'mornova/index.html', 'scalesocial/index.html',
+  ...['schego', 'cyco', 'ver-coaching', 'capybara-ai', 'self-coded-website', 'chat-itp',
+    'appear', 'depersonalization', 'printed-fate'].map(slug => `projects/${slug}/index.html`)
+]);
+function injectPortfolioMotion(html, rel) {
+  if (rel !== 'index.html' && !MOTION_CASE_STUDIES.has(rel)) return html;
+  if (!html.includes('data-portfolio-page=')) {
+    html = html.replace(/<body(?=[\s>])/, `<body data-portfolio-page="${rel === 'index.html' ? 'landing' : 'case-study'}"`);
+  }
+  if (rel === 'index.html' && !html.includes('/_assets/local/more-work.js')) {
+    html = html.replace('</head>', '<link rel="stylesheet" href="/_assets/local/selected-work.css">\n<link rel="stylesheet" href="/_assets/local/more-work.css">\n<link rel="stylesheet" href="/_assets/local/portfolio-home.css">\n<script src="/_assets/local/gallery-redirect.js" defer></script>\n<script src="/_assets/local/more-work.js" defer></script>\n</head>');
+  }
+  if (!html.includes('/_assets/local/portfolio-motion.js')) {
+    html = html.replace('</head>', '<link rel="stylesheet" href="/_assets/local/portfolio-motion.css">\n<script src="/_assets/local/portfolio-motion.js" defer></script>\n</head>');
   }
   return html;
 }
@@ -276,7 +347,7 @@ function rebuildOtherProjectsCarousel(html, currentSlug) {
   if (after === -1) return html;
   const listEnd = after; // position of the role-list's own closing </div>
 
-  const others = PROJECT_REGISTRY.filter(p => p.slug !== currentSlug);
+  const others = PROJECT_REGISTRY.filter(p => p.slug !== currentSlug && !['/projects/chat-itp', '/projects/self-coded-website'].includes(p.slug));
   const newInner = others.map(renderCarouselCard).join('');
   return html.slice(0, start + startMarker.length) + newInner + html.slice(listEnd);
 }
@@ -327,100 +398,59 @@ function chipifyDesignTags(html) {
 }
 
 // ----- Home page (the big surgery) -----------------------------------
-function applyHomePagePatches(html) {
-  // 1) Hero copy
-  const oldHero1 = '<p class="summary-info intro">Designing digital and physical experiences</p><p class="summary-info intro">that make technology feel more human!</p>';
-  const newHero1 = '<p class="summary-info intro">I design and build AI-powered products —</p><p class="summary-info intro">and the experiences around them.</p>';
-  if (html.includes(oldHero1)) html = html.replace(oldHero1, newHero1);
-
-  // 2) Rename "Selected Projects" → "Selected Design Work"
+function applyHomePagePatches(html, gallery) {
+  if (html.includes('id="selected-work"')) return html;
   html = html.replace(
-    '<h1 class="secondary-heading">Selected Projects</h1>',
-    '<h1 class="secondary-heading">Selected Design Work</h1>'
+    '<p class="summary-info intro">Designing digital and physical experiences</p><p class="summary-info intro">that make technology feel more human!</p>',
+    '<p class="summary-info intro">I design and build AI-powered products —</p><p class="summary-info intro">and the experiences around them.</p>'
   );
+  // The captured article contains all legacy work cards, builder blocks, and More link.
+  const start = html.indexOf('<article id="selected-project"');
+  if (start < 0) throw new Error('Missing captured work section.');
+  const end = html.indexOf('</article>', start);
+  if (end < 0) throw new Error('Unclosed captured work section.');
+  const selected = fs.readFileSync(path.join(SITE_CUSTOM_DIR, 'selected-work.html'), 'utf8');
+  html = html.slice(0, start) + selected + gallery + html.slice(end + '</article>'.length);
+  html = html.replace(/href="#selected-project"/g, 'href="#selected-work"');
+  html = html.replace('<section class="footer">', ABOUT_SNAPSHOT + '<section class="footer">');
+  html = html.replace(/<body([^>]*?)class="([^"]*)"/, '<body$1class="$2 portfolio-home"');
+  return html;
+}
 
-  // 3) Add data-tags to each existing Design-Work card (by unique href)
-  const designTagMap = {
-    '/projects/schego':            'product-design ux-research',
-    '/projects/cyco':              'product-design ux-research',
-    '/projects/ver-coaching':      'product-design ux-research',
-    '/projects/capybara-ai':       'product-design front-end',
-    '/projects/self-coded-website':'front-end product-design',
-  };
-  for (const [href, tags] of Object.entries(designTagMap)) {
-    const finder = `class="collection-item w-dyn-item"><a href="${href}"`;
-    const insert = `class="collection-item w-dyn-item" data-tags="${tags}"><a href="${href}"`;
-    if (html.includes(finder) && !html.includes(insert)) {
-      html = html.replace(finder, insert);
-    }
-  }
+function applyScaleSocialOverview(html) {
+  if (html.includes('id="scale-current-work"')) return html;
+  const overview = fs.readFileSync(path.join(SITE_CUSTOM_DIR, 'scale-social-overview.html'), 'utf8');
+  html = html.replace('Designing Control Without Killing Authenticity', 'Product design, design systems, and engineering handoff for Scale Studio V2.');
+  html = html.replace('<section class="project-content-section">', overview + '<section id="scale-research" class="project-content-section">');
+  html = html.replace('</head>', '<link rel="stylesheet" href="/_assets/local/scale-social-overview.css">\n</head>');
+  return html;
+}
 
-  // 4) Wrap the Design Work cards container so the filter can hide it cleanly
-  html = html.replace(
-    '<article id="selected-project" class="section-selected">',
-    '<article id="selected-project" class="section-selected" data-filterable-section>'
+// Keep existing gallery bookmarks usable after bringing the collection onto home.
+function renderGalleryCompatibilityPage() {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>More work — Duorfan Fan</title><script src="/_assets/local/gallery-redirect.js" defer></script><style>body{margin:0;background:#faf4ee;color:#49433e;font:16px/1.7 system-ui,sans-serif;min-height:100vh;display:grid;place-items:center}main{padding:32px;max-width:34rem}h1{font:400 40px/1.2 Georgia,serif}a{color:inherit;text-underline-offset:5px}</style></head><body><main><h1>More work has a new home.</h1><p>Explore the collection alongside my selected projects.</p><a href="/#more-work">Go to More work →</a></main></body></html>`;
+}
+
+function updatePortfolioLinks(html, rel) {
+  if (rel.startsWith('_assets/')) return html;
+  const home = rel === 'index.html';
+  html = html.replace(/href="\/more-projects-gallery(?:\/)?(?:#filter=([a-z-]+))?"/g, (_m, filter) => {
+    const categories = { av:'film', 'ai-film':'film', physical:'physical', graphic:'visual', ui:'product', games:'interactive', ai:'interactive' };
+    return `href="${filter && categories[filter] ? '/?work=' + categories[filter] : home ? '' : '/'}#more-work"`;
+  });
+  const featured = /^(?:mornova|scalesocial)\/|^projects\/(?:schego|printed-fate)\//.test(rel);
+  // Scope Projects/current-state changes to navigation, leaving the home logo intact.
+  html = html.replace(/<nav\b[^>]*class="[^"]*nav-menu-2[^"]*"[^>]*>[\s\S]*?<\/nav>/g, nav =>
+    nav.replace(/<a\b[^>]*>[\s\S]*?<\/a>/g, link => {
+      const label = link.replace(/<[^>]*>/g, '').trim();
+      if (!['Projects','More'].includes(label)) return link;
+      link = link.replace(/\s+aria-current="[^"]*"/g, '').replace(/\bw--current\b/g, '');
+      if (label === 'Projects') link = link.replace(/href="[^"]*"/, `href="${home ? '' : '/'}#selected-work"`);
+      const current = home ? label === 'Projects' : featured ? label === 'Projects' : rel.startsWith('projects/') && label === 'More';
+      if (current) link = link.replace('<a ', '<a aria-current="location" ');
+      return link;
+    })
   );
-
-  // 4b) Retarget the "Discover Projects" CTA. Original points to #selected-project, but with
-  //     the new IA AI Builds is now the first project section.
-  html = html.replace(
-    /href="#selected-project"(\s+class="link-block-8)/,
-    'href="#ai-builds"$1'
-  );
-
-  // 4c) Convert plain pipe-separated tags inside design cards into chip pills so they match
-  //     the AI Builds chip vocabulary. Operates only inside #selected-project (so AI Films
-  //     overlay text isn't touched).
-  html = chipifyDesignTags(html);
-
-  // 5) Build and INSERT the AI Builds section BEFORE article#selected-project
-  if (!html.includes('id="ai-builds"')) {
-    html = html.replace(
-      '<article id="selected-project"',
-      AI_BUILDS_SECTION + '<article id="selected-project"'
-    );
-  }
-
-  // 6) Replace the two "container-builder" blocks (Mornova + Scale Social) — they're absorbed
-  //    into AI Builds above. Match by their unique heading text.
-  html = removeContainerBuilderBlock(html, 'Recently, I’ve also become a builder...');
-  html = removeContainerBuilderBlock(html, 'Recently, I&rsquo;ve also become a builder...');
-  html = removeContainerBuilderBlock(html, 'Recently, I&#x27;ve also become a builder...');
-  html = removeContainerBuilderBlock(html, "Recently, I've also become a builder...");
-  html = removeContainerBuilderBlock(html, 'I also did a AI UGC case study');
-
-  // 7) Insert AI Films section AS A SIBLING after #selected-project, before the more-projects link.
-  //    The captured HTML has the more-link container *inside* article#selected-project, so we
-  //    must close that article first (inserting a fresh `</article>`) and then later strip the
-  //    now-orphaned trailing `</article>` from the same article (step 9).
-  if (!html.includes('id="ai-films"')) {
-    const anchor = '<div class="w-layout-blockcontainer container w-container"><a href="/more-projects-gallery"';
-    if (html.includes(anchor)) {
-      html = html.replace(anchor, '</article>' + AI_FILMS_SECTION + anchor);
-    }
-  }
-
-  // 8) Insert About snapshot BEFORE the footer
-  if (!html.includes('class="about-snapshot"')) {
-    html = html.replace('<section class="footer">', ABOUT_SNAPSHOT + '<section class="footer">');
-  }
-
-  // 9) Strip the orphaned `</article>` that originally closed #selected-project from the bottom
-  //    of the more-link container, since we already closed that article up at step 7. Without
-  //    this, AI Films and the more-link end up nested inside #selected-project.
-  html = html.replace(
-    '</div></article><section class="section-about-snapshot"',
-    '</div><section class="section-about-snapshot"'
-  );
-
-  // 10) Append the ChatITP card as the last card in Selected Design Work.
-  if (!html.match(/href="\/projects\/chat-itp"[^>]*class="link-block/)) {
-    const anchor = '</div></aside></div></article><article id="ai-films"';
-    if (html.includes(anchor)) {
-      html = html.replace(anchor, CHAT_ITP_DESIGN_CARD + anchor);
-    }
-  }
-
   return html;
 }
 
@@ -697,23 +727,32 @@ const ABOUT_SNAPSHOT = `<section class="section-about-snapshot">
   copyChatItpPage();
   copyAppearPage();
   copyCreativeProjectPages();
+  const sharedCreativeNavigation = extractSharedCreativeNavigation(fs.readFileSync(path.join(SITE, 'index.html'), 'utf8'));
+  const gallery = renderMoreWork(applyMorePagePatches(fs.readFileSync(path.join(SITE, 'more-projects-gallery', 'index.html'), 'utf8')), { projects: PROJECT_REGISTRY });
 
   console.log('[customize] injecting overrides + applying per-page patches ...');
   walkAndRewrite(SITE, ['.html'], (src, filePath) => {
     // Keep the resume current even when rebuilding from the original capture.
     let html = src.split('https://drive.google.com/file/d/1z1HeaOrPKD7Qw4MWvmg1FxMvouME4ZOt/view?usp=sharing').join(RESUME_URL);
     const rel = path.relative(SITE, filePath).split(path.sep).join('/');
+    html = injectSharedCreativeNavigation(html, rel, sharedCreativeNavigation);
     html = injectLocalAssets(html, rel);
+    html = injectPortfolioMotion(html, rel);
     html = applyFooterAsk(html);
-    if (rel === 'index.html')                            html = applyHomePagePatches(html);
+    if (rel === 'index.html')                            html = applyHomePagePatches(html, gallery);
     else if (rel === 'about-me/index.html')              html = applyAboutPatches(html);
     else if (rel === 'mornova/index.html')               html = applyMornovaPatches(html);
-    else if (rel === 'more-projects-gallery/index.html') html = applyMorePagePatches(html);
+    else if (rel === 'scalesocial/index.html')            html = applyScaleSocialOverview(html);
+    else if (rel === 'more-projects-gallery/index.html') html = renderGalleryCompatibilityPage();
     // Project case-study pages: rebuild the bottom "other projects" carousel from PROJECT_REGISTRY.
     const projectSlugMatch = rel.match(/^projects\/([a-z0-9-]+)\/index\.html$/);
     if (projectSlugMatch) {
       const slug = '/projects/' + projectSlugMatch[1];
       html = rebuildOtherProjectsCarousel(html, slug);
+    }
+    html = updatePortfolioLinks(html, rel);
+    if (!rel.startsWith('_assets/') && rel !== 'more-projects-gallery/index.html') {
+      html = html.replace('</head>', '<script src="/_assets/local/portfolio-navigation.js" defer></script>\n</head>');
     }
     return applySeo(html, rel);
   });
