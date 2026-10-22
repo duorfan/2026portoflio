@@ -371,7 +371,7 @@
   }
 
   // ------------------------------------------------------------------
-  // 4) Scale Social password gate
+  // 4) Scale Social / Scale Studio password gate
   // ------------------------------------------------------------------
   async function sha256Hex(str) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
@@ -379,10 +379,11 @@
   }
 
   function initScaleSocialGate() {
-    if (!/\/scalesocial(\/|$)/.test(location.pathname)) return;
+    if (!/^\/(?:scalesocial|projects\/scale-studio)(\/|$)/.test(location.pathname)) return;
     if (sessionStorage.getItem('scaleSocialUnlocked') === '1') return;
 
     document.body.classList.add('gated-hidden');
+    const projectName = location.pathname.startsWith('/projects/scale-studio') ? 'Scale Studio' : 'Scale Social';
     const modal = document.createElement('div');
     modal.className = 'gate-modal';
     modal.innerHTML = `
@@ -395,7 +396,7 @@
         <div class="gate-error" id="gate-error" aria-live="polite"></div>
         <div class="gate-hint">
           Don't have the code?
-          <a href="mailto:nf2111@nyu.edu?subject=Scale%20Social%20case%20study%20access">Email Duorfan</a>
+          <a href="mailto:duorfan@gmail.com?subject=${encodeURIComponent(projectName + ' case study access')}">Email Duorfan</a>
           for access.
         </div>
       </div>`;

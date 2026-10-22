@@ -17,8 +17,9 @@ const LEGACY_CATEGORIES = {
 };
 const INITIAL_TITLES = ['Appear', 'Depersonalization', 'Ver Coaching', 'Capybara.AI', 'CYCO', 'Space We Call Home'];
 const OMITTED_TITLES = new Set(['Printed Fate', '3050']);
-const PROFESSIONAL_SLUGS = ['/projects/ver-coaching', '/projects/capybara-ai', '/projects/cyco'];
+const PROFESSIONAL_SLUGS = ['/projects/ver-coaching', '/projects/capybara-ai', '/projects/cyco', '/scalesocial'];
 const PROFESSIONAL_COPY = {
+  '/scalesocial': ['Earlier UX research', 'Human control in AI content: exploring approval, authenticity, and automation.'],
   '/projects/ver-coaching': ['VR training UX', 'Making first-time VR vision training clearer for athletes.'],
   '/projects/capybara-ai': ['Web design · Front-end', 'A web experience for an AI-driven fintech product.'],
   '/projects/cyco': ['Product design · UX research', 'An app concept for costume rental, reuse, and remade designs.'],
@@ -108,7 +109,7 @@ function renderCard(card) {
   const id = `more-work-${slug(card.title)}`;
   const target = card.external ? ' target="_blank" rel="noopener noreferrer"' : '';
   const dimensions = card.size ? ` width="${card.size[0]}" height="${card.size[1]}"` : '';
-  const destination = /^(?:\/projects\/|\/mornova|\/scalesocial)/.test(card.href) ? 'Case study' : /youtu(?:be\.com|\.be)|vimeo\.com/.test(card.href) ? 'Watch film' : /figma\.com/.test(card.href) ? 'View prototype' : /drive\.google\.com/.test(card.href) ? 'Project document' : 'Explore project';
+  const destination = /^(?:\/projects\/|\/mornova|\/scalesocial)/.test(card.href) ? (card.href === '/scalesocial' ? 'Protected case study' : 'Case study') : /youtu(?:be\.com|\.be)|vimeo\.com/.test(card.href) ? 'Watch film' : /figma\.com/.test(card.href) ? 'View prototype' : /drive\.google\.com/.test(card.href) ? 'Project document' : 'Explore project';
   const mediaClass = card.title === 'Depersonalization' ? ' more-work-media-wide' : '';
   return `<article class="more-work-card" data-gallery-category="${escape(card.categories.join(' '))}" data-portfolio-reveal="card" role="listitem">
   <a class="more-work-link" href="${escape(card.href)}" aria-labelledby="${id}"${target}>

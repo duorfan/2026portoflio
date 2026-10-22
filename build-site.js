@@ -140,7 +140,7 @@ function copyOverrideAssets() {
   // Copy every file at the root of site-customizations/ into site/_assets/local/.
   // Excludes files that have dedicated page-level handling. This makes the
   // dir a drop-in spot for new media (images, videos, fonts) without touching build-site.js.
-  const SKIP = new Set(['chat-itp.html', 'appear.html', 'depersonalization.html', 'printed-fate.html', 'creative-selection.html', 'selected-work.html', 'scale-social-overview.html']);
+  const SKIP = new Set(['chat-itp.html', 'appear.html', 'depersonalization.html', 'printed-fate.html', 'creative-selection.html', 'selected-work.html', 'scale-social-overview.html', 'scale-studio.html']);
   for (const entry of fs.readdirSync(SITE_CUSTOM_DIR, { withFileTypes: true })) {
     if (!entry.isFile()) continue;
     if (SKIP.has(entry.name)) continue;
@@ -169,7 +169,7 @@ function copyAppearPage() {
 }
 
 function copyCreativeProjectPages() {
-  for (const slug of ['depersonalization', 'printed-fate']) {
+  for (const slug of ['depersonalization', 'printed-fate', 'scale-studio']) {
     const src = path.join(SITE_CUSTOM_DIR, slug + '.html');
     if (!fs.existsSync(src)) continue;
     const dest = path.join(SITE, 'projects', slug, 'index.html');
@@ -219,7 +219,7 @@ function extractSharedCreativeNavigation(html) {
 }
 
 function injectSharedCreativeNavigation(html, rel, navbar) {
-  if (!/^projects\/(?:appear|depersonalization|printed-fate)\/index\.html$/.test(rel)) return html;
+  if (!/^projects\/(?:appear|depersonalization|printed-fate|scale-studio)\/index\.html$/.test(rel)) return html;
   const block = `<!-- shared-creative-navigation:start -->\n${navbar}\n<!-- shared-creative-navigation:end -->`;
   if (html.includes('<!-- shared-creative-navigation -->')) return html.replace('<!-- shared-creative-navigation -->', block);
   if (html.includes('<!-- shared-creative-navigation:start -->')) {
@@ -249,7 +249,7 @@ function injectLocalAssets(html, rel) {
 const MOTION_CASE_STUDIES = new Set([
   'mornova/index.html', 'scalesocial/index.html',
   ...['schego', 'cyco', 'ver-coaching', 'capybara-ai', 'self-coded-website', 'chat-itp',
-    'appear', 'depersonalization', 'printed-fate'].map(slug => `projects/${slug}/index.html`)
+    'appear', 'depersonalization', 'printed-fate', 'scale-studio'].map(slug => `projects/${slug}/index.html`)
 ]);
 function injectPortfolioMotion(html, rel) {
   if (rel !== 'index.html' && !MOTION_CASE_STUDIES.has(rel)) return html;
@@ -306,8 +306,10 @@ function applyFooterAsk(html) {
 const PROJECT_REGISTRY = [
   { slug: '/mornova',                 title: 'Mornova',       img: '/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/692fe937530f1ae410a0f92c_Mornova_20Final_20Pre.jpg',
     primary: { label: 'AI Build', color: 'chip-ai' }, secondary: ['Product Design', 'Live demo'] },
-  { slug: '/scalesocial',             title: 'Scale Social',  img: '/_assets/local/scale-social-thumbnail.png',
-    primary: { label: 'AI Build', color: 'chip-ai' }, secondary: ['UX Research', 'Client work'] },
+  { slug: '/projects/scale-studio',   title: 'Scale Studio',  img: '/_assets/local/ss-hero.webp',
+    primary: { label: 'AI Product Design', color: 'chip-ai' }, secondary: ['Design Systems', 'Design to Code'] },
+  { slug: '/scalesocial',             title: 'Scale Social',  img: '/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/6938a001e188d69d339049f8_hero_20ss.avif',
+    primary: { label: 'UX Research', color: 'chip-design' }, secondary: ['Earlier work', 'Client work'] },
   { slug: '/projects/chat-itp',       title: 'ChatITP',       img: null,
     primary: { label: 'AI Build', color: 'chip-ai' }, secondary: ['Early Exploration'] },
   { slug: '/projects/schego',         title: 'ScheGo',        img: '/_assets/cdn.prod.website-files.com/647bb48e77bb5a186dd60dca/672cfebe5305e5054d35f460_hero_20schego.png',
@@ -417,12 +419,17 @@ function applyHomePagePatches(html, gallery) {
   return html;
 }
 
-function applyScaleSocialOverview(html) {
-  if (html.includes('id="scale-current-work"')) return html;
+function applyScaleSocialArchive(html) {
+  if (html.includes('id="scale-research-intro"')) return html;
+  // Preserve the published research introduction, independently of the V2 overview.
   const overview = fs.readFileSync(path.join(SITE_CUSTOM_DIR, 'scale-social-overview.html'), 'utf8');
-  html = html.replace('Designing Control Without Killing Authenticity', 'Product design, design systems, and engineering handoff for Scale Studio V2.');
-  html = html.replace('<section class="project-content-section">', overview + '<section id="scale-research" class="project-content-section">');
-  html = html.replace('</head>', '<link rel="stylesheet" href="/_assets/local/scale-social-overview.css">\n</head>');
+  const research = overview.match(/<div class="ss-overview-research"[\s\S]*?<\/a>\s*<\/div>/);
+  if (!research) throw new Error('Missing original Scale Social research introduction.');
+  const intro = '<section id="scale-research-intro" class="ss-overview ss-research-archive">' +
+    '<div class="ss-overview-inner">' + research[0] + '</div></section>';
+  html = html.replace(/<section class="project-title-section">[\s\S]*?<\/section>/, intro);
+  html = html.replace('<section class="project-content-section">', '<section id="scale-research" class="project-content-section">');
+  html = html.replace('</head>', '<link rel="stylesheet" href="/_assets/local/scale-social-overview.css">\n<link rel="stylesheet" href="/_assets/local/scale-social-research.css">\n</head>');
   return html;
 }
 
@@ -438,7 +445,7 @@ function updatePortfolioLinks(html, rel) {
     const categories = { av:'film', 'ai-film':'film', physical:'physical', graphic:'visual', ui:'product', games:'interactive', ai:'interactive' };
     return `href="${filter && categories[filter] ? '/?work=' + categories[filter] : home ? '' : '/'}#more-work"`;
   });
-  const featured = /^(?:mornova|scalesocial)\/|^projects\/(?:schego|printed-fate)\//.test(rel);
+  const featured = /^mornova\/|^projects\/(?:scale-studio|schego|printed-fate)\//.test(rel);
   // Scope Projects/current-state changes to navigation, leaving the home logo intact.
   html = html.replace(/<nav\b[^>]*class="[^"]*nav-menu-2[^"]*"[^>]*>[\s\S]*?<\/nav>/g, nav =>
     nav.replace(/<a\b[^>]*>[\s\S]*?<\/a>/g, link => {
@@ -446,7 +453,7 @@ function updatePortfolioLinks(html, rel) {
       if (!['Projects','More'].includes(label)) return link;
       link = link.replace(/\s+aria-current="[^"]*"/g, '').replace(/\bw--current\b/g, '');
       if (label === 'Projects') link = link.replace(/href="[^"]*"/, `href="${home ? '' : '/'}#selected-work"`);
-      const current = home ? label === 'Projects' : featured ? label === 'Projects' : rel.startsWith('projects/') && label === 'More';
+      const current = home ? label === 'Projects' : featured ? label === 'Projects' : (rel.startsWith('projects/') || rel === 'scalesocial/index.html') && label === 'More';
       if (current) link = link.replace('<a ', '<a aria-current="location" ');
       return link;
     })
@@ -610,7 +617,7 @@ const AI_BUILDS_SECTION = `<article id="ai-builds" class="section-selected" data
           <p class="transparent-subtitle">An AI morning assistant. Blends weather, calendar, and ambient lighting to wake me up with warm gradients and voice prompts.</p>
           <p class="outcome-line">Daily-use personal product · functional prototype</p>
         </div></a></div>
-        <div role="listitem" class="collection-item w-dyn-item" data-tags="ai-build ux-research"><a href="/scalesocial" class="link-block w-inline-block"><div class="div-block-10"><img alt="" loading="lazy" src="/_assets/local/scale-social-thumbnail.png" class="cover-img profile-img"><h2 class="secondary-heading project-title">Scale Social <span style="font-size:0.6em; vertical-align: middle;">🔒</span></h2>
+        <div role="listitem" class="collection-item w-dyn-item" data-tags="ai-build ux-research"><a href="/scalesocial" class="link-block w-inline-block"><div class="div-block-10"><img alt="" loading="lazy" src="/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/6938a001e188d69d339049f8_hero_20ss.avif" class="cover-img profile-img"><h2 class="secondary-heading project-title">Scale Social <span style="font-size:0.6em; vertical-align: middle;">🔒</span></h2>
           <div class="chip-row"><span class="chip chip-primary chip-ai">AI Build</span><span class="chip chip-secondary">UX Research</span><span class="chip chip-locked">Request access</span></div>
           <div class="stack-row"><span class="stack-chip">Figma</span><span class="stack-chip">AI tooling</span><span class="stack-chip">Prototype</span></div>
           <p class="transparent-subtitle">UX research and prototype work for an AI UGC platform — exploring control models that keep brand content authentic while adopting automation.</p>
@@ -730,7 +737,8 @@ const ABOUT_SNAPSHOT = `<section class="section-about-snapshot">
     if (rel === 'index.html')                            html = applyHomePagePatches(html, gallery);
     else if (rel === 'about-me/index.html')              html = applyAboutPatches(html);
     else if (rel === 'mornova/index.html')               html = applyMornovaPatches(html);
-    else if (rel === 'scalesocial/index.html')            html = applyScaleSocialOverview(html);
+    else if (rel === 'scalesocial/index.html')           html = applyScaleSocialArchive(html);
+
     else if (rel === 'more-projects-gallery/index.html') html = renderGalleryCompatibilityPage();
     // Project case-study pages: rebuild the bottom "other projects" carousel from PROJECT_REGISTRY.
     const projectSlugMatch = rel.match(/^projects\/([a-z0-9-]+)\/index\.html$/);

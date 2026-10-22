@@ -1,0 +1,5 @@
+/* Original research introduction, promoted from the published overview. */
+.ss-research-archive { padding-top: 110px; }
+.ss-research-archive .ss-overview-research { margin-top: 0; }
+@media (max-width: 767px) { .ss-research-archive { padding-top: 100px; } }
+@media (max-width: 480px) { .ss-research-archive { padding-top: 100px; } }

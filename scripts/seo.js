@@ -24,9 +24,16 @@ const PAGES = {
     image: '/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/692fe937530f1ae410a0f92c_Mornova_20Final_20Pre.jpg',
   },
   '/scalesocial': {
-    title: 'Scale Social: AI UGC Platform | Duorfan Fan',
-    description: 'Product design for Scale Studio V2 by Duorfan Fan: client-portal workflows, the Aurora design system, analytics, and engineering handoff. Access on request.',
-    // This case study already asks visitors to request access; keep it out of search.
+    title: 'Scale Social: Human Control in AI Content | Duorfan Fan',
+    description: 'Earlier UX research by Duorfan Fan into human control, content approval, and authenticity in AI-assisted brand content. Access on request.',
+    image: '/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/6938a001e188d69d339049f8_hero_20ss.avif',
+    noindex: true,
+  },
+  '/projects/scale-studio': {
+    title: 'Scale Studio: Product Design, Systems & Design to Code | Duorfan Fan',
+    description: 'Leading product design for Scale Studio V2: core workflows, the Aurora design system, analytics, and engineering handoff. Access on request.',
+    image: '/_assets/local/ss-hero.webp',
+    // Both client case studies require access and remain out of search.
     noindex: true,
   },
   '/projects/schego': {
@@ -143,7 +150,7 @@ function writeCrawlFiles(siteDir) {
   const urls = Object.entries(PAGES).filter(([, page]) => !page.noindex)
     .map(([route]) => `  <url><loc>${ORIGIN + route}</loc></url>`).join('\n');
   fs.writeFileSync(path.join(siteDir, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
-  // Allow crawling of Scale Social so crawlers can see its noindex directive.
+  // Allow crawling of protected case-study routes so crawlers can see their noindex directives.
   fs.writeFileSync(path.join(siteDir, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 }
 module.exports = { applySeo, writeCrawlFiles, PAGES };
