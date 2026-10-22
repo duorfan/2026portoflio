@@ -306,7 +306,7 @@ function applyFooterAsk(html) {
 const PROJECT_REGISTRY = [
   { slug: '/mornova',                 title: 'Mornova',       img: '/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/692fe937530f1ae410a0f92c_Mornova_20Final_20Pre.jpg',
     primary: { label: 'AI Build', color: 'chip-ai' }, secondary: ['Product Design', 'Live demo'] },
-  { slug: '/scalesocial',             title: 'Scale Social',  img: '/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/6938a001e188d69d339049f8_hero_20ss.avif',
+  { slug: '/scalesocial',             title: 'Scale Social',  img: '/_assets/local/scale-social-thumbnail.png',
     primary: { label: 'AI Build', color: 'chip-ai' }, secondary: ['UX Research', 'Client work'] },
   { slug: '/projects/chat-itp',       title: 'ChatITP',       img: null,
     primary: { label: 'AI Build', color: 'chip-ai' }, secondary: ['Early Exploration'] },
@@ -610,7 +610,7 @@ const AI_BUILDS_SECTION = `<article id="ai-builds" class="section-selected" data
           <p class="transparent-subtitle">An AI morning assistant. Blends weather, calendar, and ambient lighting to wake me up with warm gradients and voice prompts.</p>
           <p class="outcome-line">Daily-use personal product · functional prototype</p>
         </div></a></div>
-        <div role="listitem" class="collection-item w-dyn-item" data-tags="ai-build ux-research"><a href="/scalesocial" class="link-block w-inline-block"><div class="div-block-10"><img alt="" loading="lazy" src="/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/6938a001e188d69d339049f8_hero_20ss.avif" class="cover-img profile-img"><h2 class="secondary-heading project-title">Scale Social <span style="font-size:0.6em; vertical-align: middle;">🔒</span></h2>
+        <div role="listitem" class="collection-item w-dyn-item" data-tags="ai-build ux-research"><a href="/scalesocial" class="link-block w-inline-block"><div class="div-block-10"><img alt="" loading="lazy" src="/_assets/local/scale-social-thumbnail.png" class="cover-img profile-img"><h2 class="secondary-heading project-title">Scale Social <span style="font-size:0.6em; vertical-align: middle;">🔒</span></h2>
           <div class="chip-row"><span class="chip chip-primary chip-ai">AI Build</span><span class="chip chip-secondary">UX Research</span><span class="chip chip-locked">Request access</span></div>
           <div class="stack-row"><span class="stack-chip">Figma</span><span class="stack-chip">AI tooling</span><span class="stack-chip">Prototype</span></div>
           <p class="transparent-subtitle">UX research and prototype work for an AI UGC platform — exploring control models that keep brand content authentic while adopting automation.</p>
