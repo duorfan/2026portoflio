@@ -19,8 +19,8 @@ const PAGES = {
     description: 'Explore creative experiments by Duorfan Fan across AI films, games, physical computing, interactive art, graphic design, and creative technology.',
   },
   '/mornova': {
-    title: 'Mornova: AI Morning Assistant | Duorfan Fan',
-    description: 'Mornova is an AI morning assistant by Duorfan Fan, combining weather, calendar updates, ambient lighting, and voice prompts in a working prototype.',
+    title: 'Mornova: AI Morning Companion | Duorfan Fan',
+    description: 'Mornova is a working AI morning companion by Duorfan Fan, connecting web interaction, live context, and a physical lamp through product design, fabrication, and hardware-software integration.',
     image: '/_assets/cdn.prod.website-files.com/643754b8d27d2714812a10b5/692fe937530f1ae410a0f92c_Mornova_20Final_20Pre.jpg',
   },
   '/scalesocial': {

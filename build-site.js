@@ -140,7 +140,7 @@ function copyOverrideAssets() {
   // Copy every file at the root of site-customizations/ into site/_assets/local/.
   // Excludes files that have dedicated page-level handling. This makes the
   // dir a drop-in spot for new media (images, videos, fonts) without touching build-site.js.
-  const SKIP = new Set(['chat-itp.html', 'appear.html', 'depersonalization.html', 'printed-fate.html', 'creative-selection.html', 'selected-work.html', 'scale-social-overview.html', 'scale-studio.html']);
+  const SKIP = new Set(['chat-itp.html', 'appear.html', 'depersonalization.html', 'printed-fate.html', 'creative-selection.html', 'selected-work.html', 'scale-social-overview.html', 'scale-studio.html', 'mornova.html']);
   for (const entry of fs.readdirSync(SITE_CUSTOM_DIR, { withFileTypes: true })) {
     if (!entry.isFile()) continue;
     if (SKIP.has(entry.name)) continue;
@@ -176,6 +176,13 @@ function copyCreativeProjectPages() {
     ensureDirFor(dest);
     fs.copyFileSync(src, dest);
   }
+}
+
+function copyMornovaPage() {
+  const src = path.join(SITE_CUSTOM_DIR, 'mornova.html');
+  const dest = path.join(SITE, 'mornova', 'index.html');
+  ensureDirFor(dest);
+  fs.copyFileSync(src, dest);
 }
 
 // Reuse the canonical home navbar after its asset URLs have been rewritten.
@@ -219,7 +226,7 @@ function extractSharedCreativeNavigation(html) {
 }
 
 function injectSharedCreativeNavigation(html, rel, navbar) {
-  if (!/^projects\/(?:appear|depersonalization|printed-fate|scale-studio)\/index\.html$/.test(rel)) return html;
+  if (!/^(?:mornova|projects\/(?:appear|depersonalization|printed-fate|scale-studio))\/index\.html$/.test(rel)) return html;
   const block = `<!-- shared-creative-navigation:start -->\n${navbar}\n<!-- shared-creative-navigation:end -->`;
   if (html.includes('<!-- shared-creative-navigation -->')) return html.replace('<!-- shared-creative-navigation -->', block);
   if (html.includes('<!-- shared-creative-navigation:start -->')) {
@@ -504,18 +511,6 @@ function applyAboutPatches(html) {
   return html.replace(biographyPattern, (_, open, close) => open + biography + close);
 }
 
-// ----- Mornova page --------------------------------------------------
-function applyMornovaPatches(html) {
-  if (html.includes('class="live-demo-pill"')) return html;
-  // Wrap the existing phone-mockup iframe area with a live-demo header.
-  const wrapAnchor = '<div class="mornova-phone-wrap">';
-  if (html.includes(wrapAnchor)) {
-    const pill = '<div class="live-demo-wrap" id="mornova-demo"><span class="live-demo-pill">Live demo</span></div>';
-    html = html.replace(wrapAnchor, pill + wrapAnchor);
-  }
-  return html;
-}
-
 // ----- More gallery — tag the 21 cards + mark its section filterable ---
 // Per-title tag map for the More-page filter taxonomy (games / av / physical /
 // graphic / ai / ui). Cards can carry multiple tags. Keys are the exact card
@@ -722,6 +717,7 @@ const ABOUT_SNAPSHOT = `<section class="section-about-snapshot">
   copyChatItpPage();
   copyAppearPage();
   copyCreativeProjectPages();
+  copyMornovaPage();
   const sharedCreativeNavigation = extractSharedCreativeNavigation(fs.readFileSync(path.join(SITE, 'index.html'), 'utf8'));
   const gallery = renderMoreWork(applyMorePagePatches(fs.readFileSync(path.join(SITE, 'more-projects-gallery', 'index.html'), 'utf8')), { projects: PROJECT_REGISTRY });
 
@@ -736,7 +732,6 @@ const ABOUT_SNAPSHOT = `<section class="section-about-snapshot">
     html = applyFooterAsk(html);
     if (rel === 'index.html')                            html = applyHomePagePatches(html, gallery);
     else if (rel === 'about-me/index.html')              html = applyAboutPatches(html);
-    else if (rel === 'mornova/index.html')               html = applyMornovaPatches(html);
     else if (rel === 'scalesocial/index.html')           html = applyScaleSocialArchive(html);
 
     else if (rel === 'more-projects-gallery/index.html') html = renderGalleryCompatibilityPage();
