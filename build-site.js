@@ -140,7 +140,7 @@ function copyOverrideAssets() {
   // Copy every file at the root of site-customizations/ into site/_assets/local/.
   // Excludes files that have dedicated page-level handling. This makes the
   // dir a drop-in spot for new media (images, videos, fonts) without touching build-site.js.
-  const SKIP = new Set(['chat-itp.html', 'appear.html', 'depersonalization.html', 'printed-fate.html', 'creative-selection.html', 'selected-work.html', 'scale-social-overview.html', 'scale-studio.html', 'mornova.html']);
+  const SKIP = new Set(['chat-itp.html', 'appear.html', 'depersonalization.html', 'printed-fate.html', 'creative-selection.html', 'selected-work.html', 'scale-social-overview.html', 'scale-studio.html', 'mornova.html', 'ver-coaching.html']);
   for (const entry of fs.readdirSync(SITE_CUSTOM_DIR, { withFileTypes: true })) {
     if (!entry.isFile()) continue;
     if (SKIP.has(entry.name)) continue;
@@ -169,7 +169,7 @@ function copyAppearPage() {
 }
 
 function copyCreativeProjectPages() {
-  for (const slug of ['depersonalization', 'printed-fate', 'scale-studio']) {
+  for (const slug of ['depersonalization', 'printed-fate', 'scale-studio', 'ver-coaching']) {
     const src = path.join(SITE_CUSTOM_DIR, slug + '.html');
     if (!fs.existsSync(src)) continue;
     const dest = path.join(SITE, 'projects', slug, 'index.html');
@@ -226,7 +226,7 @@ function extractSharedCreativeNavigation(html) {
 }
 
 function injectSharedCreativeNavigation(html, rel, navbar) {
-  if (!/^(?:mornova|projects\/(?:appear|depersonalization|printed-fate|scale-studio))\/index\.html$/.test(rel)) return html;
+  if (!/^(?:mornova|projects\/(?:appear|depersonalization|printed-fate|scale-studio|ver-coaching))\/index\.html$/.test(rel)) return html;
   const block = `<!-- shared-creative-navigation:start -->\n${navbar}\n<!-- shared-creative-navigation:end -->`;
   if (html.includes('<!-- shared-creative-navigation -->')) return html.replace('<!-- shared-creative-navigation -->', block);
   if (html.includes('<!-- shared-creative-navigation:start -->')) {

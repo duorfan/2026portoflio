@@ -46,7 +46,8 @@ const PAGES = {
   },
   '/projects/ver-coaching': {
     title: 'Ver Coaching: VR Training UX | Duorfan Fan',
-    description: 'A UX design case study by Duorfan Fan for VR vision training, making first-time sessions clearer and exploring ways to motivate athletes to return.',
+    description: 'How Duorfan Fan turned usability research into VR onboarding and progress feedback prototypes for Ver Coaching.',
+    image: '/_assets/local/ver-hero.webp',
   },
   '/projects/capybara-ai': {
     title: 'Capybara.AI: Fintech Web Design | Duorfan Fan',
